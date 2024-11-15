@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trusted-output-app-deployment
+  labels:
+    app: trusted-output-app
+  namespace: safeinsights
+spec:
+  volumes:
+    - name: trusted-output-app-pv
+      persistentVolumeClaim:
+        claimName: trusted-output-app-pvc
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trusted-output-app
+  template:
+    metadata:
+      labels:
+        app: trusted-output-app
+    spec:
+      containers:
+      - name: trusted-output-app
+        image: trusted-output-app:verion
+        ports:
+        - containerPort: 5050
+        volumeMounts:
+        - mountPath: "/opt/data"
+          name: trusted-output-app-pv
+      tolerations:
+        - key: "environment"
+          operator: "Equal"
+          value: "production"
+          effect: "NoSchedule"
+
