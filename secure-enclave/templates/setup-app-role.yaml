@@ -1,0 +1,16 @@
+{{- if .Values.setupApp.role.enabled -}}
+apiVersion: v1
+kind: Role
+metadata:
+  name:  {{ .Values.setupApp.name }}-role
+  labels:
+    {{- include "secure-enclave.labels" . | nindent 4 }}
+
+rules: 
+{{- range .Values.setupApp.role.rules }}
+  - apiGroups: {{- .apiGroups }}
+    resources: {{- .resources }}
+    resourceNames: {{- .resourceNames}}
+    verbs: {{- .verbs }}
+{{- end }}
+{{- end }}

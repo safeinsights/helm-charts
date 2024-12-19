@@ -1,0 +1,35 @@
+{{- if .Values.setupApp.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.setupApp.name }}-deployment
+  labels:
+    app: {{ .Values.setupApp.name }}
+spec:
+  serviceAccountName: {{ .Values.setupApp.name }}-sa
+  volumes:
+    - name: {{ .Values.setupApp.name }}-pv
+      persistentVolumeClaim:
+        claimName: {{ .Values.setupApp.name }}-pvc
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.setupApp.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.setupApp.name }}
+    spec:
+      containers:
+      - name: {{ .Values.setupApp.image.name }}
+        image: {{ .Values.setupApp.image.name }}:{{ .Values.setupApp.image.tag }}
+        
+        {{- range .Values.setupApp.service.ports }}  
+        ports:
+          - containerPort: {{ .targetPort }}
+        {{- end }}
+        volumeMounts:
+        - mountPath: "/opt/data"
+          name: {{ .Values.setupApp.name }}-pv
+   
+{{- end }}
