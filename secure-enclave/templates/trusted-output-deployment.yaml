@@ -1,0 +1,41 @@
+{{- if .Values.trustedOutputApp.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.trustedOutputApp.name }}-deployment
+  labels:
+    app: {{ .Values.trustedOutputApp.name }}
+spec:
+  volumes:
+    - name: {{ .Values.trustedOutputApp.name }}-pv
+      persistentVolumeClaim:
+        claimName: {{ .Values.trustedOutputApp.name }}-pvc
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.trustedOutputApp.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.trustedOutputApp.name }}
+    spec:
+      containers:
+      - name: {{ .Values.trustedOutputApp.image.name }}
+        image: {{ .Values.trustedOutputApp.image.name }}:{{ .Values.trustedOutputApp.image.tag }}
+        
+        {{- range .Values.trustedOutputApp.service.ports }}  
+        ports:
+          - containerPort: {{ .targetPort }}
+        {{- end }}
+        volumeMounts:
+        - mountPath: "/opt/data"
+          name: {{ .Values.trustedOutputApp.name }}-pv
+          
+      tolerations:
+        - key: "environment"
+          operator: "Equal"
+          value: "production"
+          effect: "NoSchedule"
+
+{{- end }}
+

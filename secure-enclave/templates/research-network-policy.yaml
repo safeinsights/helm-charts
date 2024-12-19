@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Values.researchContainer.name }}-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      role: {{ .Values.researchContainer.name }}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          role: data
+

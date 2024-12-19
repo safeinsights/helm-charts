@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Values.trustedOutputApp.name }}-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ .Values.trustedOutputApp.name }}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          role: research
+    {{- range .Values.trustedOutputApp.service.ports }}  
+    ports:
+      - protocol: {{- .protocol }}
+        port: {{- .port }}
+    {{- end }}
+  egress: {} # needs to allow egress only to webapp endpoint... LB?
+
