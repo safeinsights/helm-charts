@@ -11,8 +11,20 @@ metadata:
 
 rules: 
 {{- range .Values.setupApp.role.rules }}
-  - apiGroups: {{- .apiGroups }}
-    resources: {{- .resources }}
-    resourceNames: {{- .resourceNames}}
-    verbs: {{- .verbs }}
+- apiGroups: 
+  {{- range .apiGroups }}
+    - {{ . | quote }}
+  {{- end }}
+  resources: 
+  {{- range .resources }}
+    - {{ . | quote }}
+  {{- end }}
+  resourceNames: 
+  {{- range .resourceNames }}
+    - {{ . | quote }}
+  {{- end }}
+  verbs: 
+  {{- range .verbs }}
+    - {{ . | quote}}
+  {{- end }}
 {{- end }}

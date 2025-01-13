@@ -11,5 +11,4 @@ subjects:
 roleRef:
   kind: Role
   name: {{ .Values.setupApp.name }}-role
-  namespace: {{ .Release.Namespace }}
   apiGroup: rbac.authorization.k8s.io
