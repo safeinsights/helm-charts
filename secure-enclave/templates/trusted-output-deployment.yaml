@@ -7,10 +7,6 @@ metadata:
   labels:
     app: {{ .Values.trustedOutputApp.name }}
 spec:
-  volumes:
-    - name: {{ .Values.trustedOutputApp.name }}-pv
-      persistentVolumeClaim:
-        claimName: {{ .Values.trustedOutputApp.name }}-pvc
   replicas: 1
   selector:
     matchLabels:
@@ -20,6 +16,10 @@ spec:
       labels:
         app: {{ .Values.trustedOutputApp.name }}
     spec:
+      volumes:
+        - name: {{ .Values.trustedOutputApp.name }}-pv
+          persistentVolumeClaim:
+            claimName: {{ .Values.trustedOutputApp.name }}-pvc
       containers:
       - name: {{ .Values.trustedOutputApp.image.name }}
         image: {{ .Values.trustedOutputApp.image.name }}:{{ .Values.trustedOutputApp.image.tag }}

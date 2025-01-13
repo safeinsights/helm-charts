@@ -39,18 +39,13 @@ setupApp:
       - apiGroups: ["*"]
         resources: ["pods"]
         resourceNames: ["research-container-*"]
-        verbs: 
-          - get
-          - watch
-          - list
-          - create
-          - delete
+        verbs: ["get", "watch", "list", "create", "delete"]
   serviceAccount:
     annotations: 
       kubernetes.io/enforce-mountable-secrets: "true"
   persistence:
     enabled: true
-    storageClassName: aws-ebs-sc
+    storageClassName: "nfs-client"
     pvcSize: 30Gi
     accessModes: 
       - ReadWriteOnce
@@ -70,7 +65,7 @@ trustedOutputApp:
   name: toa
   persistence:
     enabled: true
-    storageClassName: aws-ebs-sc
+    storageClassName: "nfs-client"
     pvcSize: 30Gi
     accessModes: 
       - ReadWriteOnce

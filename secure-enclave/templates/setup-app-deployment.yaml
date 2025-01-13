@@ -8,10 +8,6 @@ metadata:
     app: {{ .Values.setupApp.name }}
 spec:
   serviceAccountName: {{ .Values.setupApp.name }}-sa
-  volumes:
-    - name: {{ .Values.setupApp.name }}-pv
-      persistentVolumeClaim:
-        claimName: {{ .Values.setupApp.name }}-pvc
   replicas: 1
   selector:
     matchLabels:
@@ -21,6 +17,10 @@ spec:
       labels:
         app: {{ .Values.setupApp.name }}
     spec:
+      volumes:
+        - name: {{ .Values.setupApp.name }}-pv
+          persistentVolumeClaim:
+            claimName: {{ .Values.setupApp.name }}-pvc
       containers:
       - name: {{ .Values.setupApp.image.name }}
         image: {{ .Values.setupApp.image.name }}:{{ .Values.setupApp.image.tag }}

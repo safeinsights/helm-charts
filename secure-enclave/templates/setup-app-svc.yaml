@@ -9,7 +9,7 @@ spec:
     app: {{ .Values.setupApp.service.name }}
 {{- range .Values.setupApp.service.ports }}  
   ports:
-    - protocol: {{- .protocol }}
-      port: {{- .port }}
-      targetPort: {{- .targetPort }}
+    - protocol: {{ .protocol | quote }}
+      port: {{ .port | int }}
+      targetPort: {{ .targetPort | int }}
 {{- end }}
