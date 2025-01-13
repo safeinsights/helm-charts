@@ -16,9 +16,12 @@ spec:
         matchLabels:
           role: research
     {{- range .Values.trustedOutputApp.service.ports }}  
+
     ports:
-      - protocol: {{- .protocol }}
-        port: {{- .port }}
+      - protocol: {{ .protocol }}
+        port: {{ .port }}
     {{- end }}
-  egress: {} # needs to allow egress only to webapp endpoint... LB?
+  egress:
+  # needs to allow egress only to webapp endpoint... LB? 
+  - {} 
 

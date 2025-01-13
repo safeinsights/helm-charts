@@ -35,7 +35,6 @@ setupApp:
   enabled: true
   name: setup-app
   role:
-    enabled: true
     rules:
       - apiGroups: ["*"]
         resources: ["pods"]
@@ -47,7 +46,6 @@ setupApp:
           - create
           - delete
   serviceAccount:
-    create: true
     annotations: 
       kubernetes.io/enforce-mountable-secrets: "true"
   persistence:
