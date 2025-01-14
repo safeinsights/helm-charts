@@ -22,13 +22,17 @@ spec:
           persistentVolumeClaim:
             claimName: {{ .Values.setupApp.name }}-pvc
       containers:
-      - name: {{ .Values.setupApp.image.name }}
-        image: {{ .Values.setupApp.image.name }}:{{ .Values.setupApp.image.tag }}
+      - name: {{ .Values.setupApp.image.repository }}
+        image: {{ .Values.setupApp.image.registry }}/{{ .Values.setupApp.image.repository }}:{{ .Values.setupApp.image.tag }}
         
         {{- range .Values.setupApp.service.ports }}  
         ports:
           - containerPort: {{ .targetPort }}
         {{- end }}
+      {{- if .Values.setupApp.image.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.setupApp.image.imagePullSecret  }}
+      {{- end }}
         volumeMounts:
         - mountPath: "/opt/data"
           name: {{ .Values.setupApp.name }}-pv

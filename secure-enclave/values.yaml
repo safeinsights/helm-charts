@@ -56,8 +56,10 @@ setupApp:
         port: 5051
         targetPort: 5051
   image:
-    name: setup-app
-    tag: version
+    registry: 084375557107.dkr.ecr.ca-central-1.amazonaws.com
+    repository: setup-app
+    tag: latest
+    imagePullSecret: si-docker-config
 
 
 trustedOutputApp:
@@ -76,8 +78,10 @@ trustedOutputApp:
         port: 5050
         targetPort: 5050
   image:
-    name: setup-app
-    tag: version
+    registry: 084375557107.dkr.ecr.ca-central-1.amazonaws.com
+    repository: trusted-output-app
+    tag: latest
+    imagePullSecret: si-docker-config
 
 
 researchContainer:

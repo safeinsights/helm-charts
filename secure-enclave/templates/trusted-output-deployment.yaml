@@ -21,8 +21,16 @@ spec:
           persistentVolumeClaim:
             claimName: {{ .Values.trustedOutputApp.name }}-pvc
       containers:
-      - name: {{ .Values.trustedOutputApp.image.name }}
-        image: {{ .Values.trustedOutputApp.image.name }}:{{ .Values.trustedOutputApp.image.tag }}
+      - name: {{ .Values.trustedOutputApp.image.repository }}
+        image: {{ .Values.trustedOutputApp.image.registry }}/{{ .Values.trustedOutputApp.image.repository }}:{{ .Values.trustedOutputApp.image.tag }}
+        {{- range .Values.trustedOutputApp.service.ports }}  
+        ports:
+          - containerPort: {{ .targetPort }}
+      {{- end }}
+      {{- if .Values.trustedOutputApp.image.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.trustedOutputApp.image.imagePullSecret  }}
+      {{- end }}
         
         {{- range .Values.trustedOutputApp.service.ports }}  
         ports:
