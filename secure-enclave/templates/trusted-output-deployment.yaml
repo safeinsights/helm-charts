@@ -26,7 +26,16 @@ spec:
         {{- range .Values.trustedOutputApp.service.ports }}  
         ports:
           - containerPort: {{ .targetPort }}
-      {{- end }}
+        {{- end }}
+        {{- if .Values.trustedOutputApp.workingDir }}
+        workingDir: {{ .Values.trustedOutputApp.workingDir }}
+        {{- end }}
+        {{- if .Values.trustedOutputApp.command }}
+        command: 
+          {{- range .Values.trustedOutputApp.command }}
+            - {{ . | quote }}
+          {{- end }}
+        {{- end}}
       {{- if .Values.trustedOutputApp.image.imagePullSecret }}
       imagePullSecrets:
       - name: {{ .Values.trustedOutputApp.image.imagePullSecret  }}

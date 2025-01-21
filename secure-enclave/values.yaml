@@ -60,6 +60,8 @@ setupApp:
     repository: setup-app
     tag: latest
     imagePullSecret: si-docker-config
+  workingDir: /code
+  command: ["npx", "tsx", "src/lib/poll.ts"]
 
 
 trustedOutputApp:
@@ -76,13 +78,14 @@ trustedOutputApp:
     ports:
       - protocol: TCP
         port: 5050
-        targetPort: 5050
+        targetPort: 3002
   image:
     registry: 084375557107.dkr.ecr.ca-central-1.amazonaws.com
     repository: trusted-output-app
     tag: latest
     imagePullSecret: si-docker-config
-
+  workingDir: /app
+  command: ["npm", "run", "start"]
 
 researchContainer:
   name: research

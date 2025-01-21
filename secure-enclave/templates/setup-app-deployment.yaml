@@ -29,6 +29,15 @@ spec:
         ports:
           - containerPort: {{ .targetPort }}
         {{- end }}
+        {{- if .Values.setupApp.workingDir }}
+        workingDir: {{ .Values.setupApp.workingDir }}
+        {{- end }}
+        {{- if .Values.setupApp.command }}
+        command: 
+          {{- range .Values.setupApp.command }}
+            - {{ . | quote }}
+          {{- end }}
+        {{- end}}
       {{- if .Values.setupApp.image.imagePullSecret }}
       imagePullSecrets:
       - name: {{ .Values.setupApp.image.imagePullSecret  }}
