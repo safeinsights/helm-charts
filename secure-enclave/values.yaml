@@ -61,7 +61,7 @@ setupApp:
     tag: latest
     imagePullSecret: si-docker-config
   workingDir: /code
-  command: ["npx", "tsx", "src/lib/poll.ts"]
+  command: ["npx", "tsx", "src/scripts/poll.ts"]
 
 
 trustedOutputApp:
