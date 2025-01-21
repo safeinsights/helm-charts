@@ -36,6 +36,42 @@ spec:
             - {{ . | quote }}
           {{- end }}
         {{- end}}
+        env:
+        {{- if .Values.trustedOutputApp.environmentVariables.httpBasicAuth }}
+          - name: "HTTP_BASIC_AUTH"
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.trustedOutputApp.name }}-secret
+                key: http-basic-auth
+        {{- end }}
+        {{- if .Values.trustedOutputApp.environmentVariables.mgmtAppMemberId }}
+          - name: "MANAGEMENT_APP_MEMBER_ID"
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.trustedOutputApp.name }}-secret
+                key: mgmt-app-member-id
+        {{- end }}
+        {{- if .Values.trustedOutputApp.environmentVariables.mgmtAppApiUrl }}
+          - name: "MANAGEMENT_APP_API_URL"
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.trustedOutputApp.name }}-secret
+                key: mgmt-app-api-url
+        {{- end }}
+        {{- if .Values.trustedOutputApp.environmentVariables.mgmtPublicKey }}
+          - name: "MANAGEMENT_APP_PUBLIC_KEY"
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.trustedOutputApp.name }}-secret
+                key: mgmt-app-public-key
+        {{- end}}
+        {{- if .Values.trustedOutputApp.environmentVariables.mgmtPrivateKey }}
+          - name: "MANAGEMENT_APP_PRIVATE_KEY"
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.trustedOutputApp.name }}-secret
+                key: mgmt-app-private-key
+        {{- end}}
       {{- if .Values.trustedOutputApp.image.imagePullSecret }}
       imagePullSecrets:
       - name: {{ .Values.trustedOutputApp.image.imagePullSecret  }}

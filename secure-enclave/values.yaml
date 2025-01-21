@@ -86,6 +86,12 @@ trustedOutputApp:
     imagePullSecret: si-docker-config
   workingDir: /app
   command: ["npm", "run", "start"]
+  environmentVariables:
+    httpBasicAuth: admin:admin
+    mgmtAppMemberId: openstax
+    mgmtAppApiUrl: https://pilot.safeinsights.org
+    mgmtPrivateKey: 
+    mgmtPublicKey: 
 
 researchContainer:
   name: research
