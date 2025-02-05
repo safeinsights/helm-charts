@@ -56,12 +56,19 @@ setupApp:
         port: 5051
         targetPort: 5051
   image:
-    registry: 084375557107.dkr.ecr.ca-central-1.amazonaws.com
+    registry: 354918363956.dkr.ecr.ca-central-1.amazonaws.com
     repository: setup-app
     tag: latest
     imagePullSecret: si-docker-config
   workingDir: /code
   command: ["npx", "tsx", "src/scripts/poll.ts"]
+  environmentVariables:
+    k8sApiServer: https://kubernetes.default.svc.cluster.local
+    k8sServiceAccountPath: /var/run/secrets/kubernetes.io/serviceaccount
+    mgmtAppMemberId: openstax
+    mgmtAppApiUrl: https://pilot.safeinsights.org
+    mgmtPrivateKey: 
+    mgmtPublicKey: 
 
 
 trustedOutputApp:
@@ -80,7 +87,7 @@ trustedOutputApp:
         port: 5050
         targetPort: 3002
   image:
-    registry: 084375557107.dkr.ecr.ca-central-1.amazonaws.com
+    registry: 354918363956.dkr.ecr.ca-central-1.amazonaws.com
     repository: trusted-output-app
     tag: latest
     imagePullSecret: si-docker-config
@@ -95,9 +102,6 @@ trustedOutputApp:
 
 researchContainer:
   name: research
-
-
-
 
 # This is for setting Kubernetes Annotations to a Pod.
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/

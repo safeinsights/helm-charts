@@ -38,6 +38,52 @@ spec:
             - {{ . | quote }}
           {{- end }}
         {{- end}}
+        env:
+          - name: "DEPLOYMENT_ENVIRONMENT"
+            value: "KUBERNETES"
+        {{- if .Values.setupApp.environmentVariables.k8sApiServer }}
+          - name: "K8S_APISERVER"
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.setupApp.name }}-secret
+                key: k8s-api-server
+        {{- end }}
+        {{- if .Values.setupApp.environmentVariables.k8sServiceAccountPath }}
+          - name: "K8S_SERVICEACCOUNT_PATH"
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.setupApp.name }}-secret
+                key: k8s-service-account-path
+        {{- end }}
+         {{- if .Values.setupApp.environmentVariables.mgmtAppMemberId }}
+          - name: "MANAGEMENT_APP_MEMBER_ID"
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.setupApp.name }}-secret
+                key: mgmt-app-member-id
+        {{- end }}
+        {{- if .Values.setupApp.environmentVariables.mgmtAppApiUrl }}
+          - name: "MANAGEMENT_APP_API_URL"
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.setupApp.name }}-secret
+                key: mgmt-app-api-url
+        {{- end }}
+        {{- if .Values.setupApp.environmentVariables.mgmtPublicKey }}
+          - name: "MANAGEMENT_APP_PUBLIC_KEY"
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.setupApp.name }}-secret
+                key: mgmt-app-public-key
+        {{- end}}
+        {{- if .Values.setupApp.environmentVariables.mgmtPrivateKey }}
+          - name: "MANAGEMENT_APP_PRIVATE_KEY"
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.setupApp.name }}-secret
+                key: mgmt-app-private-key
+        {{- end}}
+
       {{- if .Values.setupApp.image.imagePullSecret }}
       imagePullSecrets:
       - name: {{ .Values.setupApp.image.imagePullSecret  }}
