@@ -16,6 +16,7 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 AWS_USERNAME="${AWS_USERNAME:-AWS}"
 NAMESPACE="${NAMESPACE:-default}"
 K8S_SECRET="${K8S_SECRET:-si-docker-config}"
+SETUP_APP_SA="${SETUP_APP_SA:-setup-app-sa}"
 [[ -z "${AWS_USERNAME}" ]] && fail "AWS_USERNAME is not set"
 aws --profile "${AWS_PROFILE}" sso login --no-browser --use-device-code
 AWS_ACCOUNT_ID=$(aws --profile "${AWS_PROFILE}" sts get-caller-identity --query Account --output text 2>&1) || true
@@ -45,6 +46,11 @@ if kubectl get node &>/dev/null ; then
 				"${K8S_SECRET}" \
 				--from-file=.dockerconfigjson="${DOCKER_CONFIG}" \
 				--type=kubernetes.io/dockerconfigjson || fail "ERROR: Failed to create the secret ${K8S_SECRET} in namespace ${NS} (${?})"
+			echo "Patching the service account to use the secret..."
+			kubectl patch serviceaccount  \
+				--namespace "${NAMESPACE}" "${SETUP_APP_SA}" \
+				-p "{\"imagePullSecrets\": [{\"name\": \"${K8S_SECRET}\"}]}" || fail "ERROR: Failed to patch the service account ${K8S_SECRET} (${?})"
+
 		done < <(kubectl get namespace | awk '{ print $1 }' | tail -n +2 | sort)
     fi
 fi
