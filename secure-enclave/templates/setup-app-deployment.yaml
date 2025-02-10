@@ -7,7 +7,6 @@ metadata:
   labels:
     app: {{ .Values.setupApp.name }}
 spec:
-  serviceAccountName: {{ .Values.setupApp.name }}-sa
   replicas: 1
   selector:
     matchLabels:
@@ -17,6 +16,7 @@ spec:
       labels:
         app: {{ .Values.setupApp.name }}
     spec:
+      serviceAccountName: {{ .Values.setupApp.name }}-sa
       volumes:
         - name: {{ .Values.setupApp.name }}-pv
           persistentVolumeClaim:
@@ -24,11 +24,13 @@ spec:
       containers:
       - name: {{ .Values.setupApp.image.repository }}
         image: {{ .Values.setupApp.image.registry }}/{{ .Values.setupApp.image.repository }}:{{ .Values.setupApp.image.tag }}
-        
         {{- range .Values.setupApp.service.ports }}  
         ports:
           - containerPort: {{ .targetPort }}
         {{- end }}
+        volumeMounts:
+        - mountPath: "/opt/data"
+          name: {{ .Values.setupApp.name }}-pv
         {{- if .Values.setupApp.workingDir }}
         workingDir: {{ .Values.setupApp.workingDir }}
         {{- end }}
@@ -43,53 +45,32 @@ spec:
             value: "KUBERNETES"
         {{- if .Values.setupApp.environmentVariables.k8sApiServer }}
           - name: "K8S_APISERVER"
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.setupApp.name }}-secret
-                key: k8s-api-server
+            value: {{ .Values.setupApp.environmentVariables.k8sApiServer }}
         {{- end }}
         {{- if .Values.setupApp.environmentVariables.k8sServiceAccountPath }}
           - name: "K8S_SERVICEACCOUNT_PATH"
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.setupApp.name }}-secret
-                key: k8s-service-account-path
+            value: {{ .Values.setupApp.environmentVariables.k8sServiceAccountPath }}
         {{- end }}
          {{- if .Values.setupApp.environmentVariables.mgmtAppMemberId }}
           - name: "MANAGEMENT_APP_MEMBER_ID"
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.setupApp.name }}-secret
-                key: mgmt-app-member-id
+            value: {{ .Values.setupApp.environmentVariables.mgmtAppMemberId }}
         {{- end }}
         {{- if .Values.setupApp.environmentVariables.mgmtAppApiUrl }}
           - name: "MANAGEMENT_APP_API_URL"
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.setupApp.name }}-secret
-                key: mgmt-app-api-url
+            value: {{ .Values.setupApp.environmentVariables.mgmtAppApiUrl }}
         {{- end }}
         {{- if .Values.setupApp.environmentVariables.mgmtPublicKey }}
           - name: "MANAGEMENT_APP_PUBLIC_KEY"
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.setupApp.name }}-secret
-                key: mgmt-app-public-key
+            value: {{ .Values.setupApp.environmentVariables.mgmtPublicKey }}
         {{- end}}
         {{- if .Values.setupApp.environmentVariables.mgmtPrivateKey }}
           - name: "MANAGEMENT_APP_PRIVATE_KEY"
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.setupApp.name }}-secret
-                key: mgmt-app-private-key
+            value: {{ .Values.setupApp.environmentVariables.mgmtPrivateKey }}
         {{- end}}
-
-      {{- if .Values.setupApp.image.imagePullSecret }}
+        {{- if .Values.setupApp.image.imagePullSecret }}
       imagePullSecrets:
       - name: {{ .Values.setupApp.image.imagePullSecret  }}
       {{- end }}
-        volumeMounts:
-        - mountPath: "/opt/data"
-          name: {{ .Values.setupApp.name }}-pv
+
    
 {{- end }}

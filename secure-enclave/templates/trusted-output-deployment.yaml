@@ -27,6 +27,9 @@ spec:
         ports:
           - containerPort: {{ .targetPort }}
         {{- end }}
+        volumeMounts:
+        - mountPath: "/opt/data"
+          name: {{ .Values.trustedOutputApp.name }}-pv
         {{- if .Values.trustedOutputApp.workingDir }}
         workingDir: {{ .Values.trustedOutputApp.workingDir }}
         {{- end }}
@@ -76,14 +79,6 @@ spec:
       imagePullSecrets:
       - name: {{ .Values.trustedOutputApp.image.imagePullSecret  }}
       {{- end }}
-        
-        {{- range .Values.trustedOutputApp.service.ports }}  
-        ports:
-          - containerPort: {{ .targetPort }}
-        {{- end }}
-        volumeMounts:
-        - mountPath: "/opt/data"
-          name: {{ .Values.trustedOutputApp.name }}-pv
           
       tolerations:
         - key: "environment"
