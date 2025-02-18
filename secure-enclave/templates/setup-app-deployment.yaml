@@ -60,7 +60,7 @@ spec:
             value: {{ .Values.setupApp.environmentVariables.mgmtAppMemberId }}
         {{- end }}
         {{- if .Values.setupApp.environmentVariables.mgmtAppApiUrl }}
-          - name: "MANAGEMENT_APP_API_URL"
+          - name: "MANAGEMENT_APP_BASE_URL"
             value: {{ .Values.setupApp.environmentVariables.mgmtAppApiUrl }}
         {{- end }}
         {{- if .Values.setupApp.environmentVariables.pollIntervall }}
@@ -73,12 +73,16 @@ spec:
         {{-  else }}
             value: "https://{{ .Values.trustedOutputApp.name }}-svc:{{ (index .Values.setupApp.service.ports 0 ).port | int }}"  
         {{- end}}
+        {{- if .Values.setupApp.environmentVariables.toaBasicAuth }}
+          - name: "TOA_BASIC_AUTH"
+            value: {{ .Values.setupApp.environmentVariables.toaBasicAuth }}
+        {{- end}}
         {{- if .Values.setupApp.environmentVariables.mgmtPublicKey }}
           - name: "MANAGEMENT_APP_PUBLIC_KEY"
-            value: {{ .Values.setupApp.environmentVariables.mgmtPublicKey | nindent 14 }}
+            value: {{ .Values.setupApp.environmentVariables.mgmtPublicKey | toYaml | nindent 14 }}
         {{- end}}
         {{- if .Values.setupApp.environmentVariables.mgmtPrivateKey }}
           - name: "MANAGEMENT_APP_PRIVATE_KEY"
-            value: {{ .Values.setupApp.environmentVariables.mgmtPrivateKey | nindent 14 }}
+            value: {{ .Values.setupApp.environmentVariables.mgmtPrivateKey | toYaml  | nindent 14 }}
         {{- end}}
 {{- end }}

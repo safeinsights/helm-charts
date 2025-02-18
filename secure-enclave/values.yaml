@@ -74,6 +74,7 @@ setupApp:
     mgmtAppMemberId: openstax
     mgmtAppApiUrl: http://10.0.10.128:4000
     toaApiIUrl: http://toa-svc:3002
+    toaBasicAuth: admin:admin
     pollIntervall: "60000"
     mgmtPrivateKey: | 
       -----BEGIN PRIVATE KEY-----
