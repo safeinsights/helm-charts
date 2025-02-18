@@ -21,6 +21,10 @@ spec:
         - name: {{ .Values.setupApp.name }}-pv
           persistentVolumeClaim:
             claimName: {{ .Values.setupApp.name }}-pvc
+      {{- if .Values.setupApp.image.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.setupApp.image.imagePullSecret  }}
+      {{- end }}
       containers:
       - name: {{ .Values.setupApp.image.repository }}
         image: {{ .Values.setupApp.image.registry }}/{{ .Values.setupApp.image.repository }}:{{ .Values.setupApp.image.tag }}
@@ -59,18 +63,22 @@ spec:
           - name: "MANAGEMENT_APP_API_URL"
             value: {{ .Values.setupApp.environmentVariables.mgmtAppApiUrl }}
         {{- end }}
+        {{- if .Values.setupApp.environmentVariables.pollIntervall }}
+          - name: "POLL_INTERVALL"
+            value: {{ .Values.setupApp.environmentVariables.pollIntervall | quote }}
+        {{- end}}
+          - name: "TOA_BASE_URL"
+        {{- if .Values.setupApp.environmentVariables.toaApiIUrl }}
+            value: {{ .Values.setupApp.environmentVariables.toaApiIUrl }}
+        {{-  else }}
+            value: "https://{{ .Values.trustedOutputApp.name }}-svc:{{ (index .Values.setupApp.service.ports 0 ).port | int }}"  
+        {{- end}}
         {{- if .Values.setupApp.environmentVariables.mgmtPublicKey }}
           - name: "MANAGEMENT_APP_PUBLIC_KEY"
-            value: {{ .Values.setupApp.environmentVariables.mgmtPublicKey }}
+            value: {{ .Values.setupApp.environmentVariables.mgmtPublicKey | nindent 14 }}
         {{- end}}
         {{- if .Values.setupApp.environmentVariables.mgmtPrivateKey }}
           - name: "MANAGEMENT_APP_PRIVATE_KEY"
-            value: {{ .Values.setupApp.environmentVariables.mgmtPrivateKey }}
+            value: {{ .Values.setupApp.environmentVariables.mgmtPrivateKey | nindent 14 }}
         {{- end}}
-        {{- if .Values.setupApp.image.imagePullSecret }}
-      imagePullSecrets:
-      - name: {{ .Values.setupApp.image.imagePullSecret  }}
-      {{- end }}
-
-   
 {{- end }}

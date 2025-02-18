@@ -36,10 +36,16 @@ setupApp:
   name: setup-app
   role:
     rules:
-      - apiGroups: ["*"]
+      - apiGroups: [""]
         resources: ["pods"]
-        resourceNames: ["research-container-*"]
+        resourceNames: ["research-container-*","setup-app-*"]
         verbs: ["get", "watch", "list", "create", "delete"]
+      - apiGroups: [""]
+        resources: ["secrets","services","configmaps"]
+        verbs: ["get","create","delete","list","patch"]
+      - apiGroups: ["extensions","apps"]
+        resources: ["deployments"]
+        verbs: ["get", "create", "list", "patch", "delete"]
   serviceAccount:
     annotations: 
       kubernetes.io/enforce-mountable-secrets: "true"
@@ -66,9 +72,77 @@ setupApp:
     k8sApiServer: https://kubernetes.default.svc.cluster.local
     k8sServiceAccountPath: /var/run/secrets/kubernetes.io/serviceaccount
     mgmtAppMemberId: openstax
-    mgmtAppApiUrl: https://pilot.safeinsights.org
-    mgmtPrivateKey: 
-    mgmtPublicKey: 
+    mgmtAppApiUrl: http://10.0.10.128:4000
+    toaApiIUrl: http://toa-svc:3002
+    pollIntervall: "60000"
+    mgmtPrivateKey: | 
+      -----BEGIN PRIVATE KEY-----
+      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
+      nikQyAStt1m1c26DZbeENgn2AQL/
+      -----END PRIVATE KEY-----
+    mgmtPublicKey: |
+      -----BEGIN PUBLIC KEY-----
+      MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA3QgFkh6APBb05JC0yUXZ
+      YUbNIP2Zw3bWlEWAtWipX28uAwEYus966OkzTQWP7ylKqs2LiA39lKIJa8py6unn
+      sKBSxK8Hd4jVTpoUo7yeYdSoIivalTdWbJMhgbH6ydDnSe/4jjX1heHAERYvIXQ7
+      uMH6pBB2hPhhpGjikDwl8wSDVfV7A/gPjpChiJk3Gf5ZIx6SK+aeBfjDY3W3u6QF
+      hryybj+WhfyYewsiTmgZYr8SFrvVytZtdd23Qchq8iePVHKHVzxOzTbD3bgn+pK8
+      g3dutkCVfivXJVEc7Gy9e2BQRXpbFLeqGHdhLUkRTqD9hkjC1jN149bpLzQigQDB
+      aT0iutix8JozeybCv15ZNA1xrtQS2qD+L7v3OwzEIHu4NczAaDDSrB9PWYQtMbnV
+      Fw7sUnikB0c8esY3iPB15jdI+6m6HRJ30ASIcGoogJN5+HQD/JpGMm/dHuuTbdXN
+      H7075VfrleZsGMjeQuyIZn84ILmHxdHZbC0tngBBWSEThOAMX3CKtuKYFcr+31Pu
+      0uhFPsYxqaxdH9Gwn1+8UXK101H6j2BH1QMNsZgY387MUSpHu8Os9twNeM/6n58d
+      5XL7BZhAuEgv9oAdrr/jjBAnT4Rei8uindM4m4tW57xYK3eatR5qPidOX8yk2VVV
+      xldGM1OX6NO5TuR3RD3LLacCAwEAAQ==
+      -----END PUBLIC KEY-----
 
 
 trustedOutputApp:
@@ -96,9 +170,75 @@ trustedOutputApp:
   environmentVariables:
     httpBasicAuth: admin:admin
     mgmtAppMemberId: openstax
-    mgmtAppApiUrl: https://pilot.safeinsights.org
-    mgmtPrivateKey: 
-    mgmtPublicKey: 
+    mgmtAppApiUrl: http://10.0.10.128:4000
+    mgmtPublicKey: |
+      -----BEGIN PUBLIC KEY-----
+      MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA3QgFkh6APBb05JC0yUXZ
+      YUbNIP2Zw3bWlEWAtWipX28uAwEYus966OkzTQWP7ylKqs2LiA39lKIJa8py6unn
+      sKBSxK8Hd4jVTpoUo7yeYdSoIivalTdWbJMhgbH6ydDnSe/4jjX1heHAERYvIXQ7
+      uMH6pBB2hPhhpGjikDwl8wSDVfV7A/gPjpChiJk3Gf5ZIx6SK+aeBfjDY3W3u6QF
+      hryybj+WhfyYewsiTmgZYr8SFrvVytZtdd23Qchq8iePVHKHVzxOzTbD3bgn+pK8
+      g3dutkCVfivXJVEc7Gy9e2BQRXpbFLeqGHdhLUkRTqD9hkjC1jN149bpLzQigQDB
+      aT0iutix8JozeybCv15ZNA1xrtQS2qD+L7v3OwzEIHu4NczAaDDSrB9PWYQtMbnV
+      Fw7sUnikB0c8esY3iPB15jdI+6m6HRJ30ASIcGoogJN5+HQD/JpGMm/dHuuTbdXN
+      H7075VfrleZsGMjeQuyIZn84ILmHxdHZbC0tngBBWSEThOAMX3CKtuKYFcr+31Pu
+      0uhFPsYxqaxdH9Gwn1+8UXK101H6j2BH1QMNsZgY387MUSpHu8Os9twNeM/6n58d
+      5XL7BZhAuEgv9oAdrr/jjBAnT4Rei8uindM4m4tW57xYK3eatR5qPidOX8yk2VVV
+      xldGM1OX6NO5TuR3RD3LLacCAwEAAQ==
+      -----END PUBLIC KEY-----
+    mgmtPrivateKey: |
+      -----BEGIN PRIVATE KEY-----
+      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
+      nikQyAStt1m1c26DZbeENgn2AQL/
+      -----END PRIVATE KEY-----
 
 researchContainer:
   name: research
