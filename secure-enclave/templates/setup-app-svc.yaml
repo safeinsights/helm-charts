@@ -6,7 +6,7 @@ metadata:
 spec:
   type: {{ .Values.setupApp.service.type }}
   selector:
-    app: {{ .Values.setupApp.service.name }}
+    app: {{ .Values.setupApp.name }}
 {{- range .Values.setupApp.service.ports }}  
   ports:
     - protocol: {{ .protocol | quote }}

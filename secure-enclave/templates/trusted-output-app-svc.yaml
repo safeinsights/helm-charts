@@ -6,7 +6,7 @@ metadata:
 spec:
   type: {{ .Values.trustedOutputApp.service.type }}
   selector:
-    app: {{ .Values.trustedOutputApp.service.name }}
+    app: {{ .Values.trustedOutputApp.name }}
 {{- range .Values.trustedOutputApp.service.ports }}  
   ports:
     - protocol: {{ .protocol | quote}}

@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.setupApp.name }}-deployment
+  name: {{ .Values.setupApp.name }}
   namespace: {{ .Release.Namespace }}
   labels:
     app: {{ .Values.setupApp.name }}
@@ -11,10 +11,12 @@ spec:
   selector:
     matchLabels:
       app: {{ .Values.setupApp.name }}
+      role: toa-access
   template:
     metadata:
       labels:
         app: {{ .Values.setupApp.name }}
+        role: toa-access
     spec:
       serviceAccountName: {{ .Values.setupApp.name }}-sa
       volumes:
