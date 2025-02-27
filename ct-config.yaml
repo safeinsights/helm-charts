@@ -7,11 +7,11 @@ helm-extra-set-args:
   setupApp.image.repository: nginx
   setupApp.image.tag: latest
   setupApp.persistence.storageClassName: standard
-  setupApp.environmentVariables.mgmtPrivateKey: -----BEGIN PRIVATE KEY-----Test-----END PRIVATE KEY-----
+  setupApp.environmentVariables.mgmtPrivateKey: "-----BEGIN PRIVATE KEY-----Test-----END PRIVATE KEY-----"
             
-  setupApp.environmentVariables.mgmtPublicKey:  -----BEGIN PRIVATE KEY-----Test-----END PRIVATE KEY-----
+  setupApp.environmentVariables.mgmtPublicKey:  "-----BEGIN PRIVATE KEY-----Test-----END PRIVATE KEY-----"
   trustedOutputApp.image.repository: nginx
   trustedOutputApp.image.tag: latest
   trustedOutputApp.persistence.storageClassName: standard
-  trustedOutputApp.environmentVariables.mgmtPrivateKey: -----BEGIN PRIVATE KEY-----Test-----END PRIVATE KEY-----
-  trustedOutputApp.environmentVariables.mgmtPublicKey: -----BEGIN PRIVATE KEY-----Test-----END PRIVATE KEY-----
+  trustedOutputApp.environmentVariables.mgmtPrivateKey: "-----BEGIN PRIVATE KEY-----Test-----END PRIVATE KEY-----"
+  trustedOutputApp.environmentVariables.mgmtPublicKey: "-----BEGIN PRIVATE KEY-----Test-----END PRIVATE KEY-----"

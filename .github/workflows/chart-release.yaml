@@ -2,9 +2,10 @@ name: "Publish charts to repo"
 on:
   push:
     branches:
-      - test
+      - main
     paths:
-      - "secure-enclave/**"
+      - "secure-enclave/Chart.yaml"
+      - "secure-enclave/values.yaml"
 
 jobs:
   publish:
