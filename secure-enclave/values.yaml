@@ -7,7 +7,6 @@ replicaCount: 1
 
 # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
 
-
 # This is for the secretes for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []
 # This is to override the chart name.
@@ -20,16 +19,16 @@ aws:
     name: aws-ebs-sc
     provisioner: ebs.csi.aws.com
     volumeBindingMode: WaitForFirstConsumer
-    parameters: 
+    parameters:
       csi.storage.k8s.io/fstype: xfs
       type: io1
       iopsPerGB: "50"
       encrypted: "true"
     allowedTopologies:
       - matchLabelExpressions:
-        - key: topology.ebs.csi.aws.com/zone
-          values:
-          - us-east-2c
+          - key: topology.ebs.csi.aws.com/zone
+            values:
+              - us-east-2c
 
 setupApp:
   enabled: true
@@ -38,25 +37,25 @@ setupApp:
     rules:
       - apiGroups: [""]
         resources: ["pods"]
-        resourceNames: ["research-container-*","setup-app-*"]
+        resourceNames: ["research-container-*", "setup-app-*"]
         verbs: ["get", "watch", "list", "create", "delete"]
       - apiGroups: [""]
-        resources: ["secrets","services","configmaps"]
-        verbs: ["get","create","delete","list","patch"]
-      - apiGroups: ["extensions","apps"]
+        resources: ["secrets", "services", "configmaps"]
+        verbs: ["get", "create", "delete", "list", "patch"]
+      - apiGroups: ["extensions", "apps"]
         resources: ["deployments"]
         verbs: ["get", "create", "list", "patch", "delete"]
       - apiGroups: ["batch"]
         resources: ["jobs"]
         verbs: ["get", "create", "list", "patch", "delete"]
   serviceAccount:
-    annotations: 
+    annotations:
       kubernetes.io/enforce-mountable-secrets: "true"
   persistence:
     enabled: true
     storageClassName: "nfs-client"
     pvcSize: 30Gi
-    accessModes: 
+    accessModes:
       - ReadWriteOnce
   service:
     type: ClusterIP
@@ -79,7 +78,7 @@ setupApp:
     toaApiIUrl: http://toa-svc:5050
     toaBasicAuth: admin:admin
     pollIntervall: "60000"
-    mgmtPrivateKey: | 
+    mgmtPrivateKey: |
       -----BEGIN PRIVATE KEY-----
       MIIJQQIBADANBgkqhkiG9w0BAQEFAASCCSswggknAgEAAoICAQDdCAWSHoA8FvTk
       kLTJRdlhRs0g/ZnDdtaURYC1aKlfby4DARi6z3ro6TNNBY/vKUqqzYuIDf2Uoglr
@@ -148,7 +147,6 @@ setupApp:
       xldGM1OX6NO5TuR3RD3LLacCAwEAAQ==
       -----END PUBLIC KEY-----
 
-
 trustedOutputApp:
   enabled: true
   name: toa
@@ -156,7 +154,7 @@ trustedOutputApp:
     enabled: true
     storageClassName: "nfs-client"
     pvcSize: 30Gi
-    accessModes: 
+    accessModes:
       - ReadWriteOnce
   service:
     type: ClusterIP
@@ -254,10 +252,12 @@ podAnnotations: {}
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 podLabels: {}
 
-podSecurityContext: {}
+podSecurityContext:
+  {}
   # fsGroup: 2000
 
-securityContext: {}
+securityContext:
+  {}
   # capabilities:
   #   drop:
   #   - ALL
@@ -265,12 +265,12 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
-
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
   enabled: false
   className: ""
-  annotations: {}
+  annotations:
+    {}
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
   hosts:
@@ -283,7 +283,8 @@ ingress:
   #    hosts:
   #      - chart-example.local
 
-resources: {}
+resources:
+  {}
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
