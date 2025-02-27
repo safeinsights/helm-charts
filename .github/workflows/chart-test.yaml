@@ -56,4 +56,4 @@ jobs:
           kubectl get pods -n kube-system
 
       - name: Run chart-testing (install)
-        run: ct install --config ct-config.yaml
+        run: ct install --debug --config ct-config.yaml
