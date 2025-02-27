@@ -34,7 +34,7 @@ if kubectl get node &>/dev/null ; then
     DOCKER_CONFIG="$(readlink -f ~/.docker/config.json 2>/dev/null)"
 	if [ -n "${DOCKER_CONFIG}" ] && [ -f "${DOCKER_CONFIG}" ] ; then
 		say "Creating Kubernetes secret (${K8S_SECRET}) for [${DOCKER_CONFIG}]..."
-        while read NS ; do
+        while read -r NS ; do
 			[ "${NS}" == "default" ] || [ "${NS}" == "${NAMESPACE}" ] || kubectl get secret -n "${NS}" "${K8S_SECRET}" &>/dev/null || continue
 			say "\tCreating on namespace ${NS}..."
 			kubectl delete secret \
