@@ -71,7 +71,7 @@ setupApp:
     k8sApiServer: https://kubernetes.default.svc.cluster.local
     k8sServiceAccountPath: /var/run/secrets/kubernetes.io/serviceaccount
     mgmtAppMemberId: openstax
-    mgmtAppApiUrl: http://10.0.10.128:4000
+    mgmtAppApiUrl: http://localhost:4000
     toaApiIUrl: http://toa-svc:5050
     toaBasicAuth: admin:admin
     pollIntervall: "60000"
@@ -166,7 +166,7 @@ trustedOutputApp:
   environmentVariables:
     httpBasicAuth: admin:admin
     mgmtAppMemberId: openstax
-    mgmtAppApiUrl: http://10.0.10.128:4000
+    mgmtAppApiUrl: http://localhost:4000
     mgmtPublicKey: |
       -----BEGIN PUBLIC KEY-----
       MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA3QgFkh6APBb05JC0yUXZ
