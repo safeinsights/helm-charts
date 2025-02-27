@@ -1,5 +1,5 @@
 remote: origin
 target-branch: main
 chart-dirs:
-- ./secure-enclave/**
+- ./
 chart-repos: []
