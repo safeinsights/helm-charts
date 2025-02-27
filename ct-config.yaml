@@ -2,3 +2,14 @@ remote: origin
 target-branch: main
 chart-dirs:
 - ./
+helm-extra-set-args: |
+  --set=setupApp.image.repository=nginx
+  --setup=setupApp.image.tag=latest
+  --setup=setupApp.persistence.storageClassName=standard
+  --setup=setupApp.environmentVariables.mgmtPrivateKey="-----BEGIN PRIVATE KEY-----Test-----END PRIVATE KEY-----"
+  --setup=setupApp.environmentVariables.mgmtPublicKey="-----BEGIN PRIVATE KEY-----Test-----END PRIVATE KEY-----"
+  --setup=trustedOutputApp.image.repository=nginx
+  --setup=trustedOutputApp.image.tag=latest
+  --setup=trustedOutputApp.persistence.storageClassName=standard
+  --setup=trustedOutputApp.environmentVariables.mgmtPrivateKey="-----BEGIN PRIVATE KEY-----Test-----END PRIVATE KEY-----"
+  --setup=trustedOutputApp.environmentVariables.mgmtPublicKey="-----BEGIN PRIVATE KEY-----Test-----END PRIVATE KEY-----"
