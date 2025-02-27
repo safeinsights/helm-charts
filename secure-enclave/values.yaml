@@ -53,7 +53,7 @@ setupApp:
       kubernetes.io/enforce-mountable-secrets: "true"
   persistence:
     enabled: true
-    storageClassName: "nfs-client"
+    storageClassName: default
     pvcSize: 30Gi
     accessModes:
       - ReadWriteOnce
@@ -152,7 +152,7 @@ trustedOutputApp:
   name: toa
   persistence:
     enabled: true
-    storageClassName: "nfs-client"
+    storageClassName: default
     pvcSize: 30Gi
     accessModes:
       - ReadWriteOnce
