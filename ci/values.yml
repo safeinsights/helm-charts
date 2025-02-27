@@ -1,0 +1,24 @@
+setupApp:
+  image: 
+    repository: nginx
+  persistence:
+    storageClassName: standard
+  environmentVariables:
+    mgmtPrivateKey: |
+        -----BEGIN PRIVATE KEY-----
+        -----END PRIVATE KEY-----
+    mgmtPublicKey: |
+        -----BEGIN PUBLIC KEY-----
+        -----END PUBLIC KEY-----
+trustedOutputApp:
+  image: 
+    repository: nginx
+  persistence:
+    storageClassName: standard
+  environmentVariables:
+    mgmtPrivateKey: |
+        -----BEGIN PRIVATE KEY-----
+        -----END PRIVATE KEY-----
+    mgmtPublicKey: |
+        -----BEGIN PUBLIC KEY-----
+        -----END PUBLIC KEY-----
