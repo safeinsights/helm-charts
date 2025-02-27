@@ -1,8 +1,8 @@
 setupApp:
   image: 
-    registry: 
     repository: nginx
-    imagePullSecret: 
+  persistence:
+    storageClassName: standard
   environmentVariables:
     mgmtPrivateKey: |
         -----BEGIN PRIVATE KEY-----
@@ -12,9 +12,9 @@ setupApp:
         -----END PUBLIC KEY-----
 trustedOutputApp:
   image: 
-    registry: 
     repository: nginx
-    imagePullSecret: 
+  persistence:
+    storageClassName: standard
   environmentVariables:
     mgmtPrivateKey: |
         -----BEGIN PRIVATE KEY-----

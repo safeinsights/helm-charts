@@ -64,12 +64,9 @@ setupApp:
         port: 5051
         targetPort: 5051
   image:
-    registry: 354918363956.dkr.ecr.ca-central-1.amazonaws.com
     repository: setup-app
     tag: latest
-    imagePullSecret: si-docker-config
   workingDir: /code
-  command: ["npx", "tsx", "src/scripts/poll.ts"]
   environmentVariables:
     k8sApiServer: https://kubernetes.default.svc.cluster.local
     k8sServiceAccountPath: /var/run/secrets/kubernetes.io/serviceaccount
@@ -163,12 +160,9 @@ trustedOutputApp:
         port: 5050
         targetPort: 3002
   image:
-    registry: 354918363956.dkr.ecr.ca-central-1.amazonaws.com
     repository: trusted-output-app
     tag: latest
-    imagePullSecret: si-docker-config
   workingDir: /app
-  command: ["npm", "run", "start"]
   environmentVariables:
     httpBasicAuth: admin:admin
     mgmtAppMemberId: openstax
