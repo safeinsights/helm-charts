@@ -1,12 +1,11 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: research-network-policy
-  namespace: safeinsights
+  name: {{ .Values.researchContainer.name }}-network-policy
 spec:
   podSelector:
     matchLabels:
-      role: research
+      role: {{ .Values.researchContainer.name }}
   policyTypes:
   - Egress
   egress:

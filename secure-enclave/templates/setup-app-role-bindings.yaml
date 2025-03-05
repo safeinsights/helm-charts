@@ -2,13 +2,13 @@ apiVersion: rbac.authorization.k8s.io/v1
 # This role binding allows "setup-app-sa" the role "setup-app-role" in the "safeinsights" namespace.
 kind: RoleBinding
 metadata:
-  name: setup-app-rb
-  namespace: safeinsights
+  name: {{ .Values.setupApp.name }}-rb
+  namespace: {{ .Release.Namespace }}
 subjects:
 - kind: ServiceAccount
-  name: setup-app-sa
-  namespace: safeinsights
+  name: {{ .Values.setupApp.name }}-sa
+  namespace: {{ .Release.Namespace }}
 roleRef:
   kind: Role
-  name: setup-app-role
+  name: {{ .Values.setupApp.name }}-role
   apiGroup: rbac.authorization.k8s.io

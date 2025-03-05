@@ -1,0 +1,15 @@
+remote: origin
+target-branch: main
+chart-dirs:
+- ./
+helm-extra-set-args: |
+  --set=setupApp.image.repository=nginx
+  --set=setupApp.image.tag=latest
+  --set=setupApp.persistence.storageClassName=standard
+  --set=setupApp.environmentVariables.mgmtPrivateKey="-----BEGIN PRIVATE KEY-----Test-----END PRIVATE KEY-----"
+  --set=setupApp.environmentVariables.mgmtPublicKey="-----BEGIN PRIVATE KEY-----Test-----END PRIVATE KEY-----"
+  --set=trustedOutputApp.image.repository=nginx
+  --set=trustedOutputApp.image.tag=latest
+  --set=trustedOutputApp.persistence.storageClassName=standard
+  --set=trustedOutputApp.environmentVariables.mgmtPrivateKey="-----BEGIN PRIVATE KEY-----Test-----END PRIVATE KEY-----"
+  --set=trustedOutputApp.environmentVariables.mgmtPublicKey="-----BEGIN PRIVATE KEY-----Test-----END PRIVATE KEY-----"
