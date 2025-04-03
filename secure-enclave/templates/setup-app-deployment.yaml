@@ -1,0 +1,91 @@
+{{- if .Values.setupApp.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.setupApp.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Values.setupApp.name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.setupApp.name }}
+      role: toa-access
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.setupApp.name }}
+        role: toa-access
+    spec:
+      serviceAccountName: {{ .Values.setupApp.name }}-sa
+      {{- if .Values.setupApp.image.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.setupApp.image.imagePullSecret  }}
+      {{- end }}
+      containers:
+      - name: {{ .Values.setupApp.image.repository }}
+        image: {{ .Values.setupApp.image.registry }}/{{ .Values.setupApp.image.repository }}:{{ .Values.setupApp.image.tag }}
+        {{- range .Values.setupApp.service.ports }}  
+        ports:
+          - containerPort: {{ .targetPort }}
+        {{- end }}
+        {{- if .Values.setupApp.workingDir }}
+        workingDir: {{ .Values.setupApp.workingDir }}
+        {{- end }}
+        {{- if .Values.setupApp.command }}
+        command: 
+          {{- range .Values.setupApp.command }}
+            - {{ . | quote }}
+          {{- end }}
+        {{- end }}
+        env:
+          - name: "DEPLOYMENT_ENVIRONMENT"
+            value: "KUBERNETES"
+        {{- if .Values.setupApp.environmentVariables.k8sApiServer }}
+          - name: "K8S_APISERVER"
+            value: {{ .Values.setupApp.environmentVariables.k8sApiServer }}
+        {{- end }}
+        {{- if .Values.setupApp.environmentVariables.k8sServiceAccountPath }}
+          - name: "K8S_SERVICEACCOUNT_PATH"
+            value: {{ .Values.setupApp.environmentVariables.k8sServiceAccountPath }}
+        {{- end }}
+         {{- if .Values.setupApp.environmentVariables.mgmtAppMemberId }}
+          - name: "MANAGEMENT_APP_MEMBER_ID"
+            value: {{ .Values.setupApp.environmentVariables.mgmtAppMemberId }}
+        {{- end }}
+        {{- if .Values.setupApp.environmentVariables.mgmtAppApiUrl }}
+          - name: "MANAGEMENT_APP_BASE_URL"
+            value: {{ .Values.setupApp.environmentVariables.mgmtAppApiUrl }}
+        {{- end }}
+        {{- if .Values.setupApp.environmentVariables.pollIntervall }}
+          - name: "POLL_INTERVALL"
+            value: {{ .Values.setupApp.environmentVariables.pollIntervall | quote }}
+        {{- end}}
+          - name: "TOA_BASE_URL"
+        {{- if .Values.setupApp.environmentVariables.toaApiIUrl }}
+            value: {{ .Values.setupApp.environmentVariables.toaApiIUrl }}
+        {{-  else }}
+            value: "https://{{ .Values.trustedOutputApp.name }}-svc:{{ (index .Values.setupApp.service.ports 0 ).port | int }}"  
+        {{- end}}
+        {{- if .Values.setupApp.environmentVariables.toaBasicAuth }}
+          - name: "TOA_BASIC_AUTH"
+            value: {{ .Values.setupApp.environmentVariables.toaBasicAuth }}
+        {{- end}}
+        {{- if .Values.setupApp.environmentVariables.mgmtPublicKey }}
+          - name: "MANAGEMENT_APP_PUBLIC_KEY"
+            value: {{ .Values.setupApp.environmentVariables.mgmtPublicKey | toYaml | nindent 14 }}
+        {{- end}}
+        {{- if .Values.setupApp.environmentVariables.mgmtPrivateKey }}
+          - name: "MANAGEMENT_APP_PRIVATE_KEY"
+            value: {{ .Values.setupApp.environmentVariables.mgmtPrivateKey | toYaml  | nindent 14 }}
+        {{- end}}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

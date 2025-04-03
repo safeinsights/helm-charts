@@ -1,0 +1,30 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name:  {{ .Values.setupApp.name }}-role
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "secure-enclave.labels" . | nindent 4 }}
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+
+rules: 
+{{- range .Values.setupApp.role.rules }}
+- apiGroups: 
+  {{- range .apiGroups }}
+    - {{ . | quote }}
+  {{- end }}
+  resources: 
+  {{- range .resources }}
+    - {{ . | quote }}
+  {{- end }}
+  resourceNames: 
+  {{- range .resourceNames }}
+    - {{ . | quote }}
+  {{- end }}
+  verbs: 
+  {{- range .verbs }}
+    - {{ . | quote }}
+  {{- end }}
+{{- end }}

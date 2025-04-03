@@ -1,0 +1,58 @@
+#!/bin/bash
+
+set -euo pipefail
+
+say() {
+	echo -e "${@}"
+}
+
+fail() {
+	say "${@}" 1>&2
+	exit 1
+}
+
+AWS_PROFILE="${AWS_PROFILE:-ose-admin}"
+AWS_REGION="${AWS_REGION:-us-east-1}"
+AWS_USERNAME="${AWS_USERNAME:-AWS}"
+NAMESPACE="${NAMESPACE:-default}"
+K8S_SECRET="${K8S_SECRET:-si-docker-config}"
+SETUP_APP_SA="${SETUP_APP_SA:-setup-app-sa}"
+[[ -z "${AWS_USERNAME}" ]] && fail "AWS_USERNAME is not set"
+aws --profile "${AWS_PROFILE}" sso login --no-browser --use-device-code
+AWS_ACCOUNT_ID=$(aws --profile "${AWS_PROFILE}" sts get-caller-identity --query Account --output text 2>&1) || true
+[[ "${AWS_ACCOUNT_ID}" =~ ^[0-9]+$ ]] || fail "Failed to get the account ID for profile [${AWS_PROFILE}]: ${AWS_ACCOUNT_ID}"
+HOST="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+say "Fetching the AWS login password for Docker (account ID ${AWS_ACCOUNT_ID})..."
+PASS="$(aws --profile="${AWS_PROFILE}" ecr get-login-password --region "${AWS_REGION}")"
+RC=${?}
+[ ${RC} -eq 0 ] || exit ${RC}
+say "Running Docker login for ${HOST}..."
+docker login --username "${AWS_USERNAME}" --password-stdin "${HOST}" <<< "${PASS}"
+RC=${?}
+[ ${RC} -eq 0 ] || exit ${RC}
+if kubectl get node &>/dev/null ; then
+    DOCKER_CONFIG="$(readlink -f ~/.docker/config.json 2>/dev/null)"
+	if [ -n "${DOCKER_CONFIG}" ] && [ -f "${DOCKER_CONFIG}" ] ; then
+		say "Creating Kubernetes secret (${K8S_SECRET}) for [${DOCKER_CONFIG}]..."
+        while read -r NS ; do
+			[ "${NS}" == "default" ] || [ "${NS}" == "${NAMESPACE}" ] || kubectl get secret -n "${NS}" "${K8S_SECRET}" &>/dev/null || continue
+			say "\tCreating on namespace ${NS}..."
+			kubectl delete secret \
+				--namespace "${NS}" \
+				"${K8S_SECRET}" &>/dev/null || true
+			kubectl create secret \
+				generic \
+				--namespace "${NS}" \
+				"${K8S_SECRET}" \
+				--from-file=.dockerconfigjson="${DOCKER_CONFIG}" \
+				--type=kubernetes.io/dockerconfigjson || fail "ERROR: Failed to create the secret ${K8S_SECRET} in namespace ${NS} (${?})"
+			echo "Patching the service account to use the secret..."
+			kubectl patch serviceaccount  \
+				--namespace "${NAMESPACE}" "${SETUP_APP_SA}" \
+				-p "{\"imagePullSecrets\": [{\"name\": \"${K8S_SECRET}\"}]}" || fail "ERROR: Failed to patch the service account ${K8S_SECRET} (${?})"
+
+		done < <(kubectl get namespace | awk '{ print $1 }' | tail -n +2 | sort)
+    fi
+fi
+say "Done."
+exit 0
