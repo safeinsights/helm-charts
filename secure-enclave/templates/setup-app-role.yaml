@@ -25,6 +25,6 @@ rules:
   {{- end }}
   verbs: 
   {{- range .verbs }}
-    - {{ . | quote}}
+    - {{ . | quote }}
   {{- end }}
 {{- end }}

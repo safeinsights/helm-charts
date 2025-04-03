@@ -19,10 +19,6 @@ spec:
         role: toa-access
     spec:
       serviceAccountName: {{ .Values.setupApp.name }}-sa
-      volumes:
-        - name: {{ .Values.setupApp.name }}-pv
-          persistentVolumeClaim:
-            claimName: {{ .Values.setupApp.name }}-pvc
       {{- if .Values.setupApp.image.imagePullSecret }}
       imagePullSecrets:
       - name: {{ .Values.setupApp.image.imagePullSecret  }}
@@ -34,9 +30,6 @@ spec:
         ports:
           - containerPort: {{ .targetPort }}
         {{- end }}
-        volumeMounts:
-        - mountPath: "/opt/data"
-          name: {{ .Values.setupApp.name }}-pv
         {{- if .Values.setupApp.workingDir }}
         workingDir: {{ .Values.setupApp.workingDir }}
         {{- end }}
@@ -45,7 +38,7 @@ spec:
           {{- range .Values.setupApp.command }}
             - {{ . | quote }}
           {{- end }}
-        {{- end}}
+        {{- end }}
         env:
           - name: "DEPLOYMENT_ENVIRONMENT"
             value: "KUBERNETES"
@@ -87,4 +80,12 @@ spec:
           - name: "MANAGEMENT_APP_PRIVATE_KEY"
             value: {{ .Values.setupApp.environmentVariables.mgmtPrivateKey | toYaml  | nindent 14 }}
         {{- end}}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 {{- end }}

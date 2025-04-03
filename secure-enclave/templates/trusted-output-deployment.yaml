@@ -16,20 +16,20 @@ spec:
       labels:
         app: {{ .Values.trustedOutputApp.name }}
     spec:
-      volumes:
-        - name: {{ .Values.trustedOutputApp.name }}-pv
-          persistentVolumeClaim:
-            claimName: {{ .Values.trustedOutputApp.name }}-pvc
       containers:
       - name: {{ .Values.trustedOutputApp.image.repository }}
         image: {{ .Values.trustedOutputApp.image.registry }}/{{ .Values.trustedOutputApp.image.repository }}:{{ .Values.trustedOutputApp.image.tag }}
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi  
         {{- range .Values.trustedOutputApp.service.ports }}  
         ports:
           - containerPort: {{ .targetPort }}
         {{- end }}
-        volumeMounts:
-        - mountPath: "/opt/data"
-          name: {{ .Values.trustedOutputApp.name }}-pv
         {{- if .Values.trustedOutputApp.workingDir }}
         workingDir: {{ .Values.trustedOutputApp.workingDir }}
         {{- end }}
@@ -79,12 +79,14 @@ spec:
       imagePullSecrets:
       - name: {{ .Values.trustedOutputApp.image.imagePullSecret  }}
       {{- end }}
-          
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
       tolerations:
-        - key: "environment"
-          operator: "Equal"
-          value: "production"
-          effect: "NoSchedule"
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 
 {{- end }}
 

@@ -7,14 +7,11 @@ provisioner: {{ .Values.aws.storageClass.provisioner }}
 volumeBindingMode: {{ .Values.aws.storageClass.volumeBindingMode }}
 {{- with .Values.aws.storageClass.parameters }}
 parameters:
-  {{- toYaml . | nindent 4 }}
+  {{- toYaml . | nindent 2 }}
 {{- end }}
-
-{{- if .Values.aws.storageClass.allowedTopologies -}}
 allowedTopologies:
-{{- range $k := .Values.aws.storageClass.allowedTopologies }}
-  {{- toYaml . | nindent 4 }}
-{{- end }}
-{{- end }}
-
+  - matchLabelExpressions:
+      - key: topology.ebs.csi.aws.com/zone
+        values:
+          - ca-central-1
 {{- end }}
