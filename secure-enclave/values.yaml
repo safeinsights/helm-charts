@@ -30,6 +30,9 @@ aws:
             values:
               - us-east-1
 
+networkPolicy:
+  enabled: false
+
 setupApp:
   enabled: true
   name: setup-app
@@ -37,7 +40,6 @@ setupApp:
     rules:
       - apiGroups: [""]
         resources: ["pods"]
-        resourceNames: ["research-container-*", "setup-app-*"]
         verbs: ["get", "watch", "list", "create", "delete"]
       - apiGroups: [""]
         resources: ["secrets", "services", "configmaps"]
@@ -67,11 +69,13 @@ setupApp:
     registry: 354918363956.dkr.ecr.ca-central-1.amazonaws.com
     repository: setup-app
     tag: latest
-  workingDir: /code
+    pullPolicy: Always
+  workingDir: /home/node/code
   command: ["npx", "tsx", "src/scripts/poll.ts"]
   environmentVariables:
     k8sApiServer: https://kubernetes.default.svc.cluster.local
     k8sServiceAccountPath: /var/run/secrets/kubernetes.io/serviceaccount
+    harborPullSecret: si-docker-config
     mgmtAppMemberId: openstax
     mgmtAppApiUrl: https://manage.dev.safeinsights.org/
     toaApiIUrl: http://toa-svc:5050

@@ -25,6 +25,7 @@ spec:
       {{- end }}
       containers:
       - name: {{ .Values.setupApp.image.repository }}
+        imagePullPolicy: {{ .Values.setupApp.image.pullPolicy }}
         image: {{ .Values.setupApp.image.registry }}/{{ .Values.setupApp.image.repository }}:{{ .Values.setupApp.image.tag }}
         {{- range .Values.setupApp.service.ports }}  
         ports:
@@ -54,9 +55,9 @@ spec:
           - name: "MANAGEMENT_APP_MEMBER_ID"
             value: {{ .Values.setupApp.environmentVariables.mgmtAppMemberId }}
         {{- end }}
-        {{- if .Values.setupApp.environmentVariables.mgmtAppApiUrl }}
+        {{- if .Values.setupApp.environmentVariables.mgmtAppApi.host}}
           - name: "MANAGEMENT_APP_BASE_URL"
-            value: {{ .Values.setupApp.environmentVariables.mgmtAppApiUrl }}
+            value: "{{.Values.setupApp.environmentVariables.mgmtAppApi.protocol }}://{{ .Values.setupApp.environmentVariables.mgmtAppApi.host }}:{{ .Values.setupApp.environmentVariables.mgmtAppApi.port }}"
         {{- end }}
         {{- if .Values.setupApp.environmentVariables.pollIntervall }}
           - name: "POLL_INTERVALL"
@@ -72,13 +73,13 @@ spec:
           - name: "TOA_BASIC_AUTH"
             value: {{ .Values.setupApp.environmentVariables.toaBasicAuth }}
         {{- end}}
-        {{- if .Values.setupApp.environmentVariables.mgmtPublicKey }}
-          - name: "MANAGEMENT_APP_PUBLIC_KEY"
-            value: {{ .Values.setupApp.environmentVariables.mgmtPublicKey | toYaml | nindent 14 }}
-        {{- end}}
         {{- if .Values.setupApp.environmentVariables.mgmtPrivateKey }}
           - name: "MANAGEMENT_APP_PRIVATE_KEY"
             value: {{ .Values.setupApp.environmentVariables.mgmtPrivateKey | toYaml  | nindent 14 }}
+        {{- end}}
+        {{- if .Values.setupApp.environmentVariables.harborPullSecret }}
+          - name: "HARBOR_PULL_SECRET"
+            value: {{ .Values.setupApp.environmentVariables.harborPullSecret }}
         {{- end}}
       {{- with .Values.nodeSelector }}
       nodeSelector:

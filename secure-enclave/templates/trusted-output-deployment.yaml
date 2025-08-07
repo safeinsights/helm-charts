@@ -18,6 +18,7 @@ spec:
     spec:
       containers:
       - name: {{ .Values.trustedOutputApp.image.repository }}
+        imagePullPolicy: {{ .Values.trustedOutputApp.image.pullPolicy }}
         image: {{ .Values.trustedOutputApp.image.registry }}/{{ .Values.trustedOutputApp.image.repository }}:{{ .Values.trustedOutputApp.image.tag }}
         resources:
           limits:
@@ -26,10 +27,8 @@ spec:
           requests:
             cpu: 100m
             memory: 128Mi  
-        {{- range .Values.trustedOutputApp.service.ports }}  
         ports:
-          - containerPort: {{ .targetPort }}
-        {{- end }}
+          - containerPort: {{.Values.trustedOutputApp.service.targetPort}}
         {{- if .Values.trustedOutputApp.workingDir }}
         workingDir: {{ .Values.trustedOutputApp.workingDir }}
         {{- end }}
@@ -54,20 +53,13 @@ spec:
                 name: {{ .Values.trustedOutputApp.name }}-secret
                 key: mgmt-app-member-id
         {{- end }}
-        {{- if .Values.trustedOutputApp.environmentVariables.mgmtAppApiUrl }}
+        {{- if .Values.trustedOutputApp.environmentVariables.mgmtAppApi.host }}
           - name: "MANAGEMENT_APP_API_URL"
             valueFrom:
               secretKeyRef:
                 name: {{ .Values.trustedOutputApp.name }}-secret
                 key: mgmt-app-api-url
         {{- end }}
-        {{- if .Values.trustedOutputApp.environmentVariables.mgmtPublicKey }}
-          - name: "MANAGEMENT_APP_PUBLIC_KEY"
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.trustedOutputApp.name }}-secret
-                key: mgmt-app-public-key
-        {{- end}}
         {{- if .Values.trustedOutputApp.environmentVariables.mgmtPrivateKey }}
           - name: "MANAGEMENT_APP_PRIVATE_KEY"
             valueFrom:

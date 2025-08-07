@@ -2,14 +2,21 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ .Values.researchContainer.name }}-network-policy
+  name: {{ .Values.setupApp.name }}-network-policy
+  namespace: {{ .Release.Namespace }}
 spec:
   podSelector:
     matchLabels:
-      role: {{ .Values.researchContainer.name }}
+      app: {{ .Values.setupApp.name }}
   policyTypes:
   - Egress
   egress:
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.setupApp.environmentVariables.mgmtAppApi.port }}
+      to:
+        - ipBlock:
+            cidr: {{ .Values.setupApp.environmentVariables.mgmtAppApi.host }}/32
     - ports:
         - protocol: {{ .Values.trustedOutputApp.service.protocol }}
           port: {{ .Values.trustedOutputApp.service.port }}
@@ -17,4 +24,4 @@ spec:
         - podSelector:
             matchLabels:
               app: {{ .Values.trustedOutputApp.name }}
-{{- end}}
+{{- end }}
