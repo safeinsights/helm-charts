@@ -51,13 +51,13 @@ spec:
           - name: "K8S_SERVICEACCOUNT_PATH"
             value: {{ .Values.setupApp.environmentVariables.k8sServiceAccountPath }}
         {{- end }}
-         {{- if .Values.setupApp.environmentVariables.mgmtAppMemberId }}
+         {{- if .Values.managementApp.memberId }}
           - name: "MANAGEMENT_APP_MEMBER_ID"
-            value: {{ .Values.setupApp.environmentVariables.mgmtAppMemberId }}
+            value: {{ .Values.managementApp.memberId }}
         {{- end }}
-        {{- if .Values.setupApp.environmentVariables.mgmtAppApi.host}}
+        {{- if .Values.managementApp.endpoint.host }}
           - name: "MANAGEMENT_APP_BASE_URL"
-            value: "{{.Values.setupApp.environmentVariables.mgmtAppApi.protocol }}://{{ .Values.setupApp.environmentVariables.mgmtAppApi.host }}:{{ .Values.setupApp.environmentVariables.mgmtAppApi.port }}"
+            value: {{ printf "%s://%s:%d" (default "https" .Values.managementApp.endpoint.protocol) .Values.managementApp.endpoint.host ( default "443" .Values.managementApp.endpoint.port | int) }}
         {{- end }}
         {{- if .Values.setupApp.environmentVariables.pollIntervall }}
           - name: "POLL_INTERVALL"
