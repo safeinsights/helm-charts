@@ -7,9 +7,7 @@ spec:
   type: {{ .Values.setupApp.service.type }}
   selector:
     app: {{ .Values.setupApp.name }}
-{{- range .Values.setupApp.service.ports }}  
   ports:
-    - protocol: {{ .protocol | quote }}
-      port: {{ .port | int }}
-      targetPort: {{ .targetPort | int }}
-{{- end }}
+    - protocol: {{ .Values.setupApp.service.protocol }}
+      port: {{ .Values.setupApp.service.port  }}
+      targetPort: {{ .Values.setupApp.service.targetPort  }}
