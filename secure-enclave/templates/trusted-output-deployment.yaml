@@ -64,8 +64,8 @@ spec:
           - name: "MANAGEMENT_APP_PRIVATE_KEY"
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.trustedOutputApp.name }}-secret
-                key: mgmt-app-private-key
+                name: {{ .Values.managementApp.privateKey.secretName }}
+                key: {{ .Values.managementApp.privateKey.key }}
         {{- end}}
       {{- if .Values.trustedOutputApp.image.imagePullSecret }}
       imagePullSecrets:

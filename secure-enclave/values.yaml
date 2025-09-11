@@ -18,29 +18,29 @@ aws:
     ## @param aws.storageClass.name this defines the name of the storage class
     ##
     name: aws-ebs-sc
-    ## @param aws.storageClass.provisioner this defines the storage class provisioner 
+    ## @param aws.storageClass.provisioner this defines the storage class provisioner
     ##
     provisioner: ebs.csi.aws.com
-    ## @param aws.storageClass.volumeBindingMode this defines the storage class volume binding mode 
+    ## @param aws.storageClass.volumeBindingMode this defines the storage class volume binding mode
     ##
     volumeBindingMode: WaitForFirstConsumer
-    ## @param aws.storageClass.parameters this defines the storage class parameters 
+    ## @param aws.storageClass.parameters this defines the storage class parameters
     ##
     parameters:
-      ## @param aws.storageClass.parameters.csi.storage.k8s.io/fstype this defines the filesystem type for the storage class 
+      ## @param aws.storageClass.parameters.csi.storage.k8s.io/fstype this defines the filesystem type for the storage class
       ##
       csi.storage.k8s.io/fstype: xfs
-      ## @param aws.storageClass.parameters.type this defines the type of the storage class 
+      ## @param aws.storageClass.parameters.type this defines the type of the storage class
       ##
       type: io1
-      ## @param aws.storageClass.parameters.iopsPerGB this defines the IOPS per GB for the storage 
+      ## @param aws.storageClass.parameters.iopsPerGB this defines the IOPS per GB for the storage
       ##
       iopsPerGB: "50"
-      ## @param aws.storageClass.parameters.encrypted  this defines if the storage is encrypted 
+      ## @param aws.storageClass.parameters.encrypted  this defines if the storage is encrypted
       ##
       encrypted: "true"
     ## @params aws.storageClass.allowedTopologies this defines the allowed toplogies, for eg. the zone where the storage class will be created in.
-    ## 
+    ##
     allowedTopologies:
       - matchLabelExpressions:
           - key: topology.ebs.csi.aws.com/zone
@@ -48,7 +48,7 @@ aws:
               - us-east-1
 
 ## @param networkPolicy this defines if the network policy restrictions are enforced.
-## Few limitations: 
+## Few limitations:
 ## FQDNs Egress restrictions
 ## TODO. Enforce Ingress only to some pods
 ##
@@ -62,24 +62,25 @@ managementApp:
   ## @param managementApp.memberId this defines the id of the member deploying the enclave
   ##
   memberId:
-  ## @param managementApp.endpoint this defines the endpoint where the management app is available. 
+  ## @param managementApp.endpoint this defines the endpoint where the management app is available.
   ##
   endpoint: 
-    ## @param managementApp.endpoint.protocol this defines the protocol used to access the management app 
+    ## @param managementApp.endpoint.protocol this defines the protocol used to access the management app
     ##
     protocol: https
     ## @param managementApp.endpoint.host this defines the host where the management app is available
     ## This value is required
-    host: 
+    host: app.safeinsights.org
     ## @param managementApp.endpoint.port this defines the port where the management app is available
     ##
     port: 443
   ## @param managementApp.privateKey this defines the private key of the member deploying the enclave
   ##
-  privateKey: |
-      -----BEGIN PRIVATE KEY-----
-      -----END PRIVATE KEY-----
-    
+  privateKey:
+    ## @param managementApp.privateKey.secretName this defines the name of the secret containing the private key
+    secretName: management-app-secret
+    ## @param managementApp.privateKey.key this defines the key of the private key in the secret
+    key: private-key
 
 ## @param setupApp this defines the setup app configuration
 ##
@@ -90,22 +91,6 @@ setupApp:
   ## @param setupApp.name this defines the name of the deployment and containers for the setup app
   ##
   name: setup-app
-  ## @param setupApp.roles this defines the roles needed by the setup app service account to manage jobs, secrets and deployment for the research container
-  ##
-  role:
-    rules:
-      - apiGroups: [""]
-        resources: ["pods"]
-        verbs: ["get", "watch", "list", "create", "delete"]
-      - apiGroups: [""]
-        resources: ["secrets", "services", "configmaps"]
-        verbs: ["get", "create", "delete", "list", "patch"]
-      - apiGroups: ["extensions", "apps"]
-        resources: ["deployments"]
-        verbs: ["get", "create", "list", "patch", "delete"]
-      - apiGroups: ["batch"]
-        resources: ["jobs"]
-        verbs: ["get", "create", "list", "patch", "delete"]
   ## @param setupApp.serviceAccount this defines the service account used by setup account to manage the research container and also access the Kubernetes API
   ##
   serviceAccount:
@@ -116,7 +101,7 @@ setupApp:
   persistence:
     ## @param setupApp.persistence.enabled this defines if the persistence should be enabled during the deployment
     ##
-    enabled: true
+    enabled: false
     ## @param setupApp.persistence.storageClassName this defines the storageClassName used for the persitence
     ##
     storageClassName: aws-ebs-sc
@@ -127,7 +112,6 @@ setupApp:
     ##
     accessModes:
       - ReadWriteOnce
-  
   ## @param setupApp.service this defines the service on which the setup App will be accessible
   ##
   service:
@@ -154,7 +138,7 @@ setupApp:
     repository: setup-app
     ## @param setupApp.image.tag this defines the image tag
     ##
-    tag: latest
+    tag: 20250828-5a509a54
     ## @param setupApp.image.pullPolicy this defines the image pull policy
     ##
     pullPolicy: Always
@@ -179,9 +163,6 @@ setupApp:
     ## @param setupApp.environmentVariables.toaApiIUrl this defines the trusted output app endpoint
     ##
     toaApiIUrl: http://toa-svc:5050
-    ## @param setupApp.environmentVariables.toaBasicAuth this defines the basic authentication for the trusted output app connection
-    ## TODO remove from here and use the @Ref httpBasicAuth from the toa configuration
-    toaBasicAuth: admin:admin
     ## @param setupApp.environmentVariables.pollIntervall this overrides the setup app polling interval
     ##
     pollIntervall: "60000"
@@ -199,17 +180,17 @@ trustedOutputApp:
   persistence:
     ## @param trustedOutputApp.persistence.enabled this defines if the persistence should be enabled during the deployment
     ##
-    enabled: true
+    enabled: false
     ## @param trustedOutputApp.persistence.storageClassName this defines the storageClassName used for the persitence
     ##
-    storageClassName: aws-ebs-sc
+    storageClassName: aws-ebs
     ## @param trustedOutputApp.persistence.pvcSize this defines the size set for the the persitence
     ##
     pvcSize: 1Gi
     ## @param trustedOutputApp.persistence.accessModes this defines the access modes used for the persitence
     ##
     accessModes:
-      - ReadWriteOnce  
+      - ReadWriteOnce
   ## @param trustedOutputApp.service this defines the service on which the trusted output App will be accessible
   ##
   service:
@@ -236,7 +217,7 @@ trustedOutputApp:
     repository: trusted-output-app
     ## @param trustedOutputApp.image.tag this defines the image tag
     ##
-    tag: latest
+    tag: 20250728-a5d087fc
     ## @param trustedOutputApp.image.pullPolicy this defines the image pull policy
     ##
     pullPolicy: Always
@@ -302,12 +283,12 @@ resources:
   # choice for the user. This also increases chances charts run on environments with little
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
   # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-    limits:
-      cpu: 100m
-      memory: 128Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
 
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
@@ -340,7 +321,8 @@ volumeMounts: []
 #   mountPath: "/etc/foo"
 #   readOnly: true
 
-nodeSelector: {}
+nodeSelector:
+  {}
   # kubernetes.io/os: linux
 # -- Affinity rules for scheduling the pod. If an explicit label selector is not provided for pod affinity or pod anti-affinity one will be created from the pod selector labels.
 affinity:
