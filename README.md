@@ -23,7 +23,7 @@ To install the chart, run:
 ```bash
 helm repo add secure-enclave https://safeinsights.github.io/helm-charts
 helm repo update
-helm install secure-enclave secure-enclave/secure-enclave
+helm install secure-enclave secure-enclave/secure-enclave --values custom-values.yaml
 ```
 
 ## Pre Requirements
