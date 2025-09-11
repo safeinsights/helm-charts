@@ -58,13 +58,13 @@ networkPolicy:
 
 ## @param managementApp this defines all the configurations related to the management app
 ##
-managementApp: 
+managementApp:
   ## @param managementApp.memberId this defines the id of the member deploying the enclave
   ##
   memberId:
   ## @param managementApp.endpoint this defines the endpoint where the management app is available.
   ##
-  endpoint: 
+  endpoint:
     ## @param managementApp.endpoint.protocol this defines the protocol used to access the management app
     ##
     protocol: https
