@@ -53,7 +53,7 @@ aws:
 ## TODO. Enforce Ingress only to some pods
 ##
 networkPolicy:
-  ## @param networkPolicy.enabled this enables or disables the network policy
+  ## @param networkPolicy.enabled this enables or  disables the network policy
   enabled: false
 
 ## @param managementApp this defines all the configurations related to the management app
