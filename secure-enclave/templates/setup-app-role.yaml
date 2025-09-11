@@ -9,22 +9,13 @@ metadata:
     meta.helm.sh/release-name: {{ .Release.Name }}
     meta.helm.sh/release-namespace: {{ .Release.Namespace }}
 
-rules: 
-{{- range .Values.setupApp.role.rules }}
-- apiGroups: 
-  {{- range .apiGroups }}
-    - {{ . | quote }}
-  {{- end }}
-  resources: 
-  {{- range .resources }}
-    - {{ . | quote }}
-  {{- end }}
-  resourceNames: 
-  {{- range .resourceNames }}
-    - {{ . | quote }}
-  {{- end }}
-  verbs: 
-  {{- range .verbs }}
-    - {{ . | quote }}
-  {{- end }}
-{{- end }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get","list"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "create", "list", "delete"]

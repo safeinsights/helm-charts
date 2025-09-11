@@ -1,3 +1,4 @@
+{{- if .Values.networkPolicy.enabled -}}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -11,20 +12,22 @@ spec:
   - Ingress
   - Egress
   ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          name: {{ .Release.Namespace }}
-    - podSelector:
-        matchLabels:
-          role: research
-    {{- range .Values.trustedOutputApp.service.ports }}  
-
-    ports:
-      - protocol: {{ .protocol }}
-        port: {{ .port }}
-    {{- end }}
+    - ports: 
+      - protocol: {{  .Values.trustedOutputApp.service.protocol }}
+        port: {{  .Values.trustedOutputApp.service.port }}
+      from:
+        - podSelector:
+            matchLabels:
+              role: toa-access
+        - podSelector:
+            matchLabels:
+              app: {{ .Values.setupApp.name }}
   egress:
-  # needs to allow egress only to webapp endpoint... LB? 
-  - {} 
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.setupApp.environmentVariables.mgmtAppApi.port }}
+      to:
+        - ipBlock:
+            cidr: {{ .Values.setupApp.environmentVariables.mgmtAppApi.host }}/32
 
+{{- end }}
