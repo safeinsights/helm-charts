@@ -3,7 +3,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Values.setupApp.name }}
-  namespace: {{ .Release.Namespace }}
+  # namespace omitted (Helm will inject release ns)
+  # namespace: {{ .Release.Namespace }}
+  # namespace: {{ .Values.setupApp.namespace | default .Release.Namespace }}
   labels:
     app: {{ .Values.setupApp.name }}
 spec:
@@ -19,14 +21,28 @@ spec:
         role: toa-access
     spec:
       serviceAccountName: {{ .Values.setupApp.name }}-sa
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       {{- if .Values.setupApp.image.imagePullSecret }}
       imagePullSecrets:
       - name: {{ .Values.setupApp.image.imagePullSecret  }}
       {{- end }}
       containers:
       - name: {{ .Values.setupApp.image.repository }}
-        imagePullPolicy: {{ .Values.setupApp.image.pullPolicy }}
-        image: {{ .Values.setupApp.image.registry }}/{{ .Values.setupApp.image.repository }}:{{ .Values.setupApp.image.tag }}  
+        # imagePullPolicy: {{ .Values.setupApp.image.pullPolicy }}
+        imagePullPolicy: {{ .Values.setupApp.image.pullPolicy | default "IfNotPresent" }}
+        # image: {{ .Values.setupApp.image.registry }}/{{ .Values.setupApp.image.repository }}:{{ .Values.setupApp.image.tag }}  
+        # Use digest if provided, otherwise tag
+        {{- if .Values.setupApp.image.digest }}
+        image: "{{ .Values.setupApp.image.registry }}/{{ .Values.setupApp.image.repository }}@{{ .Values.setupApp.image.digest }}"
+        {{- else }}
+        image: "{{ .Values.setupApp.image.registry }}/{{ .Values.setupApp.image.repository }}:{{ .Values.setupApp.image.tag }}"
+        {{- end }}
         ports:
           - containerPort: {{ .Values.setupApp.service.targetPort  }}
         {{- if .Values.setupApp.workingDir }}
@@ -97,6 +113,18 @@ spec:
           - name: "HARBOR_PULL_SECRET"
             value: {{ .Values.setupApp.environmentVariables.harborPullSecret }}
         {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            cpu: "100m"      # guaranteed slice
+            memory: "128Mi"
+          limits:
+            cpu: "500m"      # max allowed
+            memory: "256Mi"
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

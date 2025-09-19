@@ -3,7 +3,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Values.trustedOutputApp.name }}
-  namespace: {{ .Release.Namespace }}
+  # namespace omitted (Helm will inject release ns)
+  # namespace: {{ .Release.Namespace }}
+  # namespace: {{ .Values.trustedOutputApp.namespace | default .Release.Namespace }}
   labels:
     app: {{ .Values.trustedOutputApp.name }}
 spec:
@@ -16,10 +18,29 @@ spec:
       labels:
         app: {{ .Values.trustedOutputApp.name }}
     spec:
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: {{ .Values.trustedOutputApp.image.repository }}
-        imagePullPolicy: {{ .Values.trustedOutputApp.image.pullPolicy }}
-        image: {{ .Values.trustedOutputApp.image.registry }}/{{ .Values.trustedOutputApp.image.repository }}:{{ .Values.trustedOutputApp.image.tag }}
+        # imagePullPolicy: {{ .Values.trustedOutputApp.image.pullPolicy }}
+        imagePullPolicy: {{ .Values.trustedOutputApp.image.pullPolicy | default "IfNotPresent" }}
+        # image: {{ .Values.trustedOutputApp.image.registry }}/{{ .Values.trustedOutputApp.image.repository }}:{{ .Values.trustedOutputApp.image.tag }}
+        # Use digest if provided, otherwise tag
+        {{- if .Values.trustedOutputApp.image.digest }}
+        image: "{{ .Values.trustedOutputApp.image.registry }}/{{ .Values.trustedOutputApp.image.repository }}@{{ .Values.trustedOutputApp.image.digest }}"
+        {{- else }}
+        image: "{{ .Values.trustedOutputApp.image.registry }}/{{ .Values.trustedOutputApp.image.repository }}:{{ .Values.trustedOutputApp.image.tag }}"
+        {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
         resources:
           limits:
             cpu: 100m

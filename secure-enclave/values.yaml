@@ -1,288 +1,128 @@
-# Default values for secure-enclave.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
 
-# This is to override the chart name.
 nameOverride: ""
 fullnameOverride: ""
 
-## @param aws this defines the values configured when deployed on AWS.
-##
 aws:
-  ## @param aws.enabled this defines if AWS configurations are enabled.
-  ##
   enabled: false
-  ## @param aws.storageClass this defines the storage class used for the deployment
-  ##
   storageClass:
-    ## @param aws.storageClass.name this defines the name of the storage class
-    ##
     name: aws-ebs-sc
-    ## @param aws.storageClass.provisioner this defines the storage class provisioner
-    ##
     provisioner: ebs.csi.aws.com
-    ## @param aws.storageClass.volumeBindingMode this defines the storage class volume binding mode
-    ##
     volumeBindingMode: WaitForFirstConsumer
-    ## @param aws.storageClass.parameters this defines the storage class parameters
-    ##
     parameters:
-      ## @param aws.storageClass.parameters.csi.storage.k8s.io/fstype this defines the filesystem type for the storage class
-      ##
       csi.storage.k8s.io/fstype: xfs
-      ## @param aws.storageClass.parameters.type this defines the type of the storage class
-      ##
       type: io1
-      ## @param aws.storageClass.parameters.iopsPerGB this defines the IOPS per GB for the storage
-      ##
       iopsPerGB: "50"
-      ## @param aws.storageClass.parameters.encrypted  this defines if the storage is encrypted
-      ##
       encrypted: "true"
-    ## @params aws.storageClass.allowedTopologies this defines the allowed toplogies, for eg. the zone where the storage class will be created in.
-    ##
     allowedTopologies:
       - matchLabelExpressions:
           - key: topology.ebs.csi.aws.com/zone
             values:
               - us-east-1
 
-## @param networkPolicy this defines if the network policy restrictions are enforced.
-## Few limitations:
-## FQDNs Egress restrictions
-## TODO. Enforce Ingress only to some pods
-##
 networkPolicy:
-  ## @param networkPolicy.enabled this enables or  disables the network policy
   enabled: false
 
-## @param managementApp this defines all the configurations related to the management app
-##
 managementApp:
-  ## @param managementApp.memberId this defines the id of the member deploying the enclave
-  ##
   memberId:
-  ## @param managementApp.endpoint this defines the endpoint where the management app is available.
-  ##
   endpoint:
-    ## @param managementApp.endpoint.protocol this defines the protocol used to access the management app
-    ##
     protocol: https
-    ## @param managementApp.endpoint.host this defines the host where the management app is available
-    ## This value is required
     host: app.safeinsights.org
-    ## @param managementApp.endpoint.port this defines the port where the management app is available
-    ##
     port: 443
-  ## @param managementApp.privateKey this defines the private key of the member deploying the enclave
-  ##
   privateKey:
-    ## @param managementApp.privateKey.secretName this defines the name of the secret containing the private key
     secretName: management-app-secret
-    ## @param managementApp.privateKey.key this defines the key of the private key in the secret
     key: private-key
 
-## @param setupApp this defines the setup app configuration
-##
 setupApp:
-  ## @param setupApp.enabled this defines if the setup app should be deployed
-  ##
   enabled: true
-  ## @param setupApp.name this defines the name of the deployment and containers for the setup app
-  ##
   name: setup-app
-  ## @param setupApp.serviceAccount this defines the service account used by setup account to manage the research container and also access the Kubernetes API
-  ##
+  # namespace: setup-app
+  rbac:
+    allowedSecretNames: []   # e.g., ["toa-api-credentials"]
+    allowJobCreate: false    # set true only if your app must create batch Jobs
   serviceAccount:
     annotations:
       kubernetes.io/enforce-mountable-secrets: "true"
-  ## @param setupApp.persistence this defines the persistence configuration for the setup app.
-  ##
   persistence:
-    ## @param setupApp.persistence.enabled this defines if the persistence should be enabled during the deployment
-    ##
     enabled: false
-    ## @param setupApp.persistence.storageClassName this defines the storageClassName used for the persitence
-    ##
     storageClassName: aws-ebs-sc
-    ## @param setupApp.persistence.pvcSize this defines the size set for the the persitence
-    ##
     pvcSize: 1Gi
-    ## @param setupApp.persistence.accessModes this defines the access modes used for the persitence
-    ##
     accessModes:
       - ReadWriteOnce
-  ## @param setupApp.service this defines the service on which the setup App will be accessible
-  ##
   service:
-    ## @param setupApp.service.type this defines the service type
-    ##
     type: ClusterIP
-    ## @param setupApp.service.protocol this defines the service protocol
-    ##
     protocol: TCP
-    ## @param setupApp.service.port this defines the service external port
-    ##
     port: 5051
-    ## @param setupApp.service.targetPort this defines the container internal port that the service redirects to.
-    ##
     targetPort: 5051
-  ## @param setupApp.image this defines the image configuration for the setup app
-  ##
   image:
-    ## @param setupApp.image.registry this defines the image registry
-    ##
     registry: harbor.safeinsights.org/safeinsights-public
-    ## @param setupApp.image.repository this defines the image repository
-    ##
     repository: setup-app
-    ## @param setupApp.image.tag this defines the image tag
-    ##
-    tag: 20250828-5a509a54
-    ## @param setupApp.image.pullPolicy this defines the image pull policy
-    ##
-    pullPolicy: Always
-  ## @param setupApp.workingDir this defines the working directory inside the setup app container
-  ##
+    # registry: harbor.safeinsights.org
+    # repository: safeinsights-public/setup-app
+    # Prefer digest pinning; leave tag empty when using digest
+    digest: "sha256:PUT_REAL_DIGEST_HERE"
+    tag: ""                    # keep empty when using digest
+    # tag: 20250828-5a509a54
+    # pullPolicy: Always
+    pullPolicy: IfNotPresent
   workingDir: /home/node/code
-  ## @param setupApp.command this defines the command to start the setup app container
-  ##
   command: ["npx", "tsx", "src/scripts/poll.ts"]
-  ## @param setupApp.environmentVariables this defines the setup app environment variables
-  ##
   environmentVariables:
-    ## @param setupApp.environmentVariables.k8sApiServer this defines the Kubernetes API endpoint
-    ##
     k8sApiServer: https://kubernetes.default.svc.cluster.local
-    ## @param setupApp.environmentVariables.k8sServiceAccountPath this defines the setup app service account secret mounting path
-    ##
     k8sServiceAccountPath: /var/run/secrets/kubernetes.io/serviceaccount
-    ## @param setupApp.environmentVariables.harborPullSecret this configures the pull secret from harbor
-    ##
     harborPullSecret: si-docker-config
-    ## @param setupApp.environmentVariables.toaApiIUrl this defines the trusted output app endpoint
-    ##
     toaApiIUrl: http://toa-svc:5050
-    ## @param setupApp.environmentVariables.pollIntervall this overrides the setup app polling interval
-    ##
     pollIntervall: "60000"
-## @param trustedOutputApp this defines the trusted output app configuration
-##
 trustedOutputApp:
-  ## @param trustedOutputApp.enabled this defines if the trusted output app should be deployed
-  ##
   enabled: true
-  ## @param trustedOutputApp.name this defines the name of the deployment and containers for the trusted output app
-  ##
   name: toa
-  ## @param trustedOutputApp.persistence this defines the persistence configuration for the trusted output app.
-  ##
   persistence:
-    ## @param trustedOutputApp.persistence.enabled this defines if the persistence should be enabled during the deployment
-    ##
     enabled: false
-    ## @param trustedOutputApp.persistence.storageClassName this defines the storageClassName used for the persitence
-    ##
     storageClassName: aws-ebs
-    ## @param trustedOutputApp.persistence.pvcSize this defines the size set for the the persitence
-    ##
     pvcSize: 1Gi
-    ## @param trustedOutputApp.persistence.accessModes this defines the access modes used for the persitence
-    ##
     accessModes:
       - ReadWriteOnce
-  ## @param trustedOutputApp.service this defines the service on which the trusted output App will be accessible
-  ##
   service:
-    ## @param trustedOutputApp.service.type this defines the service type
-    ##
     type: ClusterIP
-    ## @param trustedOutputApp.service.protocol this defines the service protocol
-    ##
     protocol: TCP
-    ## @param trustedOutputApp.service.port this defines the service external port
-    ##
     port: 5050
-    ## @param trustedOutputApp.service.targetPort this defines the container internal port that the service redirects to.
-    ##
     targetPort: 3002
-  ## @param trustedOutputApp.image this defines the image configuration for the trusted output app
-  ##
   image:
-    ## @param trustedOutputApp.image.registry this defines the image registry
-    ##
     registry: harbor.safeinsights.org/safeinsights-public
-    ## @param trustedOutputApp.image.repository this defines the image repository
-    ##
     repository: trusted-output-app
-    ## @param trustedOutputApp.image.tag this defines the image tag
-    ##
-    tag: 20250728-a5d087fc
-    ## @param trustedOutputApp.image.pullPolicy this defines the image pull policy
-    ##
-    pullPolicy: Always
-  ## @param trustedOutputApp.workingDir this defines the working directory inside the setup app container
-  ##
+    digest: "sha256:PUT_REAL_DIGEST_HERE"
+    tag: ""                    # keep empty when using digest
+    # tag: 20250728-a5d087fc
+    # pullPolicy: Always
+    pullPolicy: IfNotPresent
   workingDir: /home/node/app
-  ## @param trustedOutputApp.command this defines the command to start the trusted output app container
-  ##
   command: ["npm", "run", "start"]
-  ## @param trustedOutputApp.environmentVariables this defines the trusted outptu app environment variables
-  ##
   environmentVariables:
-    ## @param setupApp.environmentVariables.httpBasicAuth this defines the basic authentication for the trusted output app connection
-    ##
     httpBasicAuth: admin:admin
-## @param researchContainer this defines the research container app configuration
-##
 researchContainer:
-  ## @param researchContainer.name this defines the name of the jobs and containers for the research
-  ##
   name: research
 
-# This is for setting Kubernetes Annotations to a Pod.
-# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
 podAnnotations: {}
-# This is for setting Kubernetes Labels to a Pod.
-# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 podLabels: {}
 
 podSecurityContext:
   {}
-  # fsGroup: 2000
 
 securityContext:
   {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
 
-# This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
   enabled: false
   className: ""
   annotations:
     {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
   hosts:
     - host: chart-example.local
       paths:
         - path: /
           pathType: ImplementationSpecific
   tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
 
 resources:
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
   limits:
     cpu: 100m
     memory: 128Mi
@@ -290,7 +130,6 @@ resources:
     cpu: 100m
     memory: 128Mi
 
-# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
   httpGet:
     path: /
@@ -300,31 +139,18 @@ readinessProbe:
     path: /
     port: http
 
-# This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
 autoscaling:
   enabled: false
   minReplicas: 1
   maxReplicas: 100
   targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
 
-# Additional volumes on the output Deployment definition.
 volumes: []
-# - name: foo
-#   secret:
-#     secretName: mysecret
-#     optional: false
 
-# Additional volumeMounts on the output Deployment definition.
 volumeMounts: []
-# - name: foo
-#   mountPath: "/etc/foo"
-#   readOnly: true
 
 nodeSelector:
   {}
-  # kubernetes.io/os: linux
-# -- Affinity rules for scheduling the pod. If an explicit label selector is not provided for pod affinity or pod anti-affinity one will be created from the pod selector labels.
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
@@ -335,12 +161,10 @@ affinity:
   podAntiAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
       - topologyKey: "kubernetes.io/hostname"
-# -- Topology spread constraints to increase the controller resilience by distributing pods across the cluster zones. If an explicit label selector is not provided one will be created from the pod selector labels.
 topologySpreadConstraints:
   - maxSkew: 1
     topologyKey: topology.kubernetes.io/zone
     whenUnsatisfiable: DoNotSchedule
-# -- Tolerations to allow the pod to be scheduled to nodes with taints.
 tolerations:
   - key: CriticalAddonsOnly
     operator: Exists
