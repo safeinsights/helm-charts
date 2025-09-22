@@ -1,0 +1,24 @@
+{{- if .Values.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Values.trustedOutputApp.name }}-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Values.trustedOutputApp.name }}
+    app.kubernetes.io/name: {{ .Values.trustedOutputApp.name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.trustedOutputApp.name }}
+      app.kubernetes.io/name: {{ .Values.trustedOutputApp.name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  {{- if hasKey .Values.pdb "minAvailable" }}
+  minAvailable: {{ .Values.pdb.minAvailable }}
+  {{- else if hasKey .Values.pdb "maxUnavailable" }}
+  maxUnavailable: {{ .Values.pdb.maxUnavailable }}
+  {{- else }}
+  minAvailable: 1
+  {{- end }}
+{{- end }}

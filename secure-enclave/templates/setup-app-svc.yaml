@@ -1,3 +1,4 @@
+{{- if .Values.service.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -11,3 +12,5 @@ spec:
     - protocol: {{ .Values.setupApp.service.protocol }}
       port: {{ .Values.setupApp.service.port  }}
       targetPort: {{ .Values.setupApp.service.targetPort  }}
+{{- end }}
+

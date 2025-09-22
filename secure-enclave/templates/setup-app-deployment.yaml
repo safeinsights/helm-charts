@@ -4,21 +4,39 @@ kind: Deployment
 metadata:
   name: {{ .Values.setupApp.name }}
   # namespace omitted (Helm will inject release ns)
-  # namespace: {{ .Release.Namespace }}
+  namespace: {{ .Release.Namespace }}
   # namespace: {{ .Values.setupApp.namespace | default .Release.Namespace }}
   labels:
     app: {{ .Values.setupApp.name }}
+    app.kubernetes.io/name: {{ .Values.setupApp.name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount | default 2 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: {{ .Values.setupApp.name }}
+      app.kubernetes.io/name: {{ .Values.setupApp.name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
       role: toa-access
   template:
     metadata:
       labels:
         app: {{ .Values.setupApp.name }}
+        app.kubernetes.io/name: {{ .Values.setupApp.name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
         role: toa-access
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
       serviceAccountName: {{ .Values.setupApp.name }}-sa
       securityContext:
@@ -28,14 +46,45 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+      {{- if .Values.emptyDir.enabled }}
+      volumes:
+        - name: scratch
+          emptyDir:
+            {{- with .Values.emptyDir.sizeLimit }}
+            sizeLimit: {{ . | quote }}
+            {{- end }}
+      {{- end }}
       {{- if .Values.setupApp.image.imagePullSecret }}
       imagePullSecrets:
       - name: {{ .Values.setupApp.image.imagePullSecret  }}
       {{- end }}
+
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: {{ .Values.setupApp.name | default "setup-app" }}
+                  app.kubernetes.io/name: {{ .Values.setupApp.name | default "setup-app" }}
+                  app.kubernetes.io/instance: {{ .Release.Name }}
+              topologyKey: kubernetes.io/hostname
+
+      {{- if .Values.topologySpread.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: {{ .Values.topologySpread.topologyKey | default "topology.kubernetes.io/zone" | quote }}
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: {{ .Values.setupApp.name }}
+              app.kubernetes.io/name: {{ .Values.setupApp.name | default "setup-app" }}
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- end }}
+
+
       containers:
       - name: {{ .Values.setupApp.image.repository }}
-        # imagePullPolicy: {{ .Values.setupApp.image.pullPolicy }}
-        imagePullPolicy: {{ .Values.setupApp.image.pullPolicy | default "IfNotPresent" }}
+        imagePullPolicy: {{ .Values.setupApp.image.pullPolicy | default "Always" | quote }}
         # image: {{ .Values.setupApp.image.registry }}/{{ .Values.setupApp.image.repository }}:{{ .Values.setupApp.image.tag }}  
         # Use digest if provided, otherwise tag
         {{- if .Values.setupApp.image.digest }}
@@ -119,12 +168,39 @@ spec:
           capabilities:
             drop: ["ALL"]
         resources:
-          requests:
-            cpu: "100m"      # guaranteed slice
-            memory: "128Mi"
-          limits:
-            cpu: "500m"      # max allowed
-            memory: "256Mi"
+          {{- toYaml .Values.resources | nindent 12 }}
+        {{- if .Values.emptyDir.enabled }}
+        volumeMounts:
+          - name: scratch
+            mountPath: {{ default "/tmp" .Values.emptyDir.mountPath | quote }}
+        {{- end }}
+
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.probes.readiness.path | default "/healthz" | quote }}
+            port: {{ .Values.setupApp.service.targetPort }}
+          initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds | default 5 }}
+          periodSeconds: {{ .Values.probes.readiness.periodSeconds | default 10 }}
+          timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds | default 2 }}
+          failureThreshold: {{ .Values.probes.readiness.failureThreshold | default 3 }}
+
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.probes.liveness.path | default "/livez" | quote }}
+            port: {{ .Values.setupApp.service.targetPort }}
+          initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds | default 10 }}
+          periodSeconds: {{ .Values.probes.liveness.periodSeconds | default 10 }}
+          timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds | default 2 }}
+          failureThreshold: {{ .Values.probes.liveness.failureThreshold | default 3 }}
+
+        # Optional but recommended if app is slow to boot:
+        startupProbe:
+          httpGet:
+            path: {{ .Values.probes.startup.path | default "/healthz" | quote }}
+            port: {{ .Values.setupApp.service.targetPort }}
+          failureThreshold: {{ .Values.probes.startup.failureThreshold | default 30 }}
+          periodSeconds: {{ .Values.probes.startup.periodSeconds | default 5 }}
+
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

@@ -1,5 +1,7 @@
-nameOverride: ''
-fullnameOverride: ''
+
+nameOverride: ""
+fullnameOverride: ""
+
 aws:
   enabled: false
   storageClass:
@@ -9,35 +11,19 @@ aws:
     parameters:
       csi.storage.k8s.io/fstype: xfs
       type: io1
-      iopsPerGB: '50'
-      encrypted: 'true'
+      iopsPerGB: "50"
+      encrypted: "true"
     allowedTopologies:
-    - matchLabelExpressions:
-      - key: topology.ebs.csi.aws.com/zone
-        values:
-        - us-east-1
+      - matchLabelExpressions:
+          - key: topology.ebs.csi.aws.com/zone
+            values:
+              - us-east-1
+
 networkPolicy:
-  enabled: true
-probes:
-  readiness:
-    path: /healthz
-    initialDelaySeconds: 5
-    periodSeconds: 10
-    timeoutSeconds: 2
-    failureThreshold: 3
-  liveness:
-    path: /livez
-    initialDelaySeconds: 10
-    periodSeconds: 10
-    timeoutSeconds: 2
-    failureThreshold: 3
-  startup:
-    path: /healthz
-    failureThreshold: 30
-    periodSeconds: 5
+  enabled: false
 
 managementApp:
-  memberId: null
+  memberId:
   endpoint:
     protocol: https
     host: app.safeinsights.org
@@ -45,21 +31,23 @@ managementApp:
   privateKey:
     secretName: management-app-secret
     key: private-key
+
 setupApp:
   enabled: true
   name: setup-app
+  # namespace: setup-app
   rbac:
-    allowedSecretNames: []
-    allowJobCreate: false
+    allowedSecretNames: []   # e.g., ["toa-api-credentials"]
+    allowJobCreate: false    # set true only if your app must create batch Jobs
   serviceAccount:
     annotations:
-      kubernetes.io/enforce-mountable-secrets: 'true'
+      kubernetes.io/enforce-mountable-secrets: "true"
   persistence:
     enabled: false
     storageClassName: aws-ebs-sc
     pvcSize: 1Gi
     accessModes:
-    - ReadWriteOnce
+      - ReadWriteOnce
   service:
     type: ClusterIP
     protocol: TCP
@@ -68,22 +56,22 @@ setupApp:
   image:
     registry: harbor.safeinsights.org/safeinsights-public
     repository: setup-app
-    digest: sha256:PUT_REAL_DIGEST_HERE
-    tag: ''
+    # registry: harbor.safeinsights.org
+    # repository: safeinsights-public/setup-app
+    # Prefer digest pinning; leave tag empty when using digest
+    digest: "sha256:PUT_REAL_DIGEST_HERE"
+    tag: ""                    # keep empty when using digest
+    # tag: 20250828-5a509a54
     pullPolicy: Always
+    #pullPolicy: IfNotPresent
   workingDir: /home/node/code
-  command:
-  - npx
-  - tsx
-  - src/scripts/poll.ts
+  command: ["npx", "tsx", "src/scripts/poll.ts"]
   environmentVariables:
     k8sApiServer: https://kubernetes.default.svc.cluster.local
     k8sServiceAccountPath: /var/run/secrets/kubernetes.io/serviceaccount
     harborPullSecret: si-docker-config
     toaApiIUrl: http://toa-svc:5050
-    pollIntervall: '60000'
-    mgmtAppApi:
-      port: 9443
+    pollIntervall: "60000"
 trustedOutputApp:
   enabled: true
   name: toa
@@ -92,7 +80,7 @@ trustedOutputApp:
     storageClassName: aws-ebs
     pvcSize: 1Gi
     accessModes:
-    - ReadWriteOnce
+      - ReadWriteOnce
   service:
     type: ClusterIP
     protocol: TCP
@@ -101,34 +89,41 @@ trustedOutputApp:
   image:
     registry: harbor.safeinsights.org/safeinsights-public
     repository: trusted-output-app
-    digest: sha256:PUT_REAL_DIGEST_HERE
-    tag: ''
+    digest: "sha256:PUT_REAL_DIGEST_HERE"
+    tag: ""                    # keep empty when using digest
+    # tag: 20250728-a5d087fc
     pullPolicy: Always
+    #pullPolicy: IfNotPresent
   workingDir: /home/node/app
-  command:
-  - npm
-  - run
-  - start
-  args: []
+  command: ["npm", "run", "start"]
   environmentVariables:
     httpBasicAuth: admin:admin
 researchContainer:
   name: research
+
 replicaCount: 2
+
 podAnnotations: {}
 podLabels: {}
-podSecurityContext: {}
-securityContext: {}
+
+podSecurityContext:
+  {}
+
+securityContext:
+  {}
+
 ingress:
   enabled: false
-  className: ''
-  annotations: {}
+  className: ""
+  annotations:
+    {}
   hosts:
-  - host: chart-example.local
-    paths:
-    - path: /
-      pathType: ImplementationSpecific
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
   tls: []
+
 resources:
   requests:
     cpu: 100m
@@ -138,10 +133,12 @@ resources:
     cpu: 500m
     memory: 512Mi
     ephemeral-storage: 2Gi
+
 emptyDir:
   enabled: true
   sizeLimit: 2Gi
   mountPath: /tmp
+
 livenessProbe:
   httpGet:
     path: /
@@ -150,48 +147,33 @@ readinessProbe:
   httpGet:
     path: /
     port: http
+
 autoscaling:
   enabled: false
   minReplicas: 1
   maxReplicas: 100
   targetCPUUtilizationPercentage: 80
+
 volumes: []
+
 volumeMounts: []
-nodeSelector: {}
+
+nodeSelector:
+  {}
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
       nodeSelectorTerms:
-      - matchExpressions:
-        - key: karpenter.sh/nodepool
-          operator: DoesNotExist
+        - matchExpressions:
+            - key: karpenter.sh/nodepool
+              operator: DoesNotExist
   podAntiAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
-    - topologyKey: kubernetes.io/hostname
+      - topologyKey: "kubernetes.io/hostname"
 topologySpreadConstraints:
-- maxSkew: 1
-  topologyKey: topology.kubernetes.io/zone
-  whenUnsatisfiable: DoNotSchedule
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: DoNotSchedule
 tolerations:
-- key: CriticalAddonsOnly
-  operator: Exists
-pdb:
-  enabled: true
-  minAvailable: 1
-antiAffinity:
-  enabled: true
-  required: false
-topologySpread:
-  enabled: true
-  topologyKey: topology.kubernetes.io/zone
-hpa:
-  enabled: false
-  minReplicas: 2
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 70
-service:
-  enabled: true
-  type: ClusterIP
-  port: 80
-image:
-  pullPolicy: Always
+  - key: CriticalAddonsOnly
+    operator: Exists

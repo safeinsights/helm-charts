@@ -4,12 +4,51 @@ metadata:
   name: "{{ include "secure-enclave.fullname" . }}-test-connection"
   labels:
     {{- include "secure-enclave.labels" . | nindent 4 }}
+    helm.sh/test: "true"
   annotations:
     "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
+  # Pod-level hardening
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10000
+    runAsGroup: 10000
+    seccompProfile:
+      type: RuntimeDefault
+  restartPolicy: Never
+
+  # Scratch space for read-only rootfs
+  volumes:
+    - name: tmp
+      emptyDir:
+        sizeLimit: 256Mi
+
   containers:
     - name: wget
-      image: busybox
-      command: ['wget']
+      # Pin the image tag (avoid :latest)
+      image: busybox:1.36.1
+      imagePullPolicy: Always
+      command: ["wget"]
+      # Keep your original target if you prefer; this is just a placeholder:
+      # args: ['-qO-', 'http://{{ include "secure-enclave.fullname" . }}-svc:{{ .Values.service.port | default 80 }}/healthz']
       args: ['{{ include "secure-enclave.fullname" . }}']
-  restartPolicy: Never
+      # Container-level hardening
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      # Resources incl. ephemeral-storage (requests + limits)
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+          ephemeral-storage: 64Mi
+        limits:
+          cpu: 50m
+          memory: 64Mi
+          ephemeral-storage: 256Mi

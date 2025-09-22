@@ -4,19 +4,37 @@ kind: Deployment
 metadata:
   name: {{ .Values.trustedOutputApp.name }}
   # namespace omitted (Helm will inject release ns)
-  # namespace: {{ .Release.Namespace }}
+  namespace: {{ .Release.Namespace }}
   # namespace: {{ .Values.trustedOutputApp.namespace | default .Release.Namespace }}
   labels:
     app: {{ .Values.trustedOutputApp.name }}
+    app.kubernetes.io/name: {{ .Values.trustedOutputApp.name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount | default 2 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: {{ .Values.trustedOutputApp.name }}
+      app.kubernetes.io/name: {{ .Values.trustedOutputApp.name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
         app: {{ .Values.trustedOutputApp.name }}
+        app.kubernetes.io/name: {{ .Values.trustedOutputApp.name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
       securityContext:
         runAsUser: 10001
@@ -25,10 +43,45 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+      {{- if .Values.emptyDir.enabled }}
+      volumes:
+        - name: scratch
+          emptyDir:
+            {{- with .Values.emptyDir.sizeLimit }}
+            sizeLimit: {{ . | quote }}
+            {{- end }}
+      {{- end }}
+      {{- if .Values.trustedOutputApp.image.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.trustedOutputApp.image.imagePullSecret  }}
+      {{- end }}
+
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: {{ .Values.trustedOutputApp.name }}
+                  app.kubernetes.io/name: {{ .Values.trustedOutputApp.name }}
+                  app.kubernetes.io/instance: {{ .Release.Name }}
+              topologyKey: kubernetes.io/hostname
+
+      {{- if .Values.topologySpread.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: {{ .Values.topologySpread.topologyKey | default "topology.kubernetes.io/zone" | quote }}
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: {{ .Values.trustedOutputApp.name }}
+              app.kubernetes.io/name: {{ .Values.trustedOutputApp.name }}
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- end }}
+
       containers:
       - name: {{ .Values.trustedOutputApp.image.repository }}
         # imagePullPolicy: {{ .Values.trustedOutputApp.image.pullPolicy }}
-        imagePullPolicy: {{ .Values.trustedOutputApp.image.pullPolicy | default "IfNotPresent" }}
+        imagePullPolicy: {{ .Values.trustedOutputApp.image.pullPolicy | default "Always" | quote }}
         # image: {{ .Values.trustedOutputApp.image.registry }}/{{ .Values.trustedOutputApp.image.repository }}:{{ .Values.trustedOutputApp.image.tag }}
         # Use digest if provided, otherwise tag
         {{- if .Values.trustedOutputApp.image.digest }}
@@ -42,12 +95,13 @@ spec:
           capabilities:
             drop: ["ALL"]
         resources:
-          limits:
-            cpu: 100m
-            memory: 128Mi
-          requests:
-            cpu: 100m
-            memory: 128Mi  
+          {{- toYaml .Values.resources | nindent 12 }}
+
+        {{- if .Values.emptyDir.enabled }}
+        volumeMounts:
+          - name: scratch
+            mountPath: {{ default "/tmp" .Values.emptyDir.mountPath | quote }}
+        {{- end }}
         ports:
           - containerPort: {{.Values.trustedOutputApp.service.targetPort}}
         {{- if .Values.trustedOutputApp.workingDir }}
@@ -88,10 +142,33 @@ spec:
                 name: {{ .Values.managementApp.privateKey.secretName }}
                 key: {{ .Values.managementApp.privateKey.key }}
         {{- end}}
-      {{- if .Values.trustedOutputApp.image.imagePullSecret }}
-      imagePullSecrets:
-      - name: {{ .Values.trustedOutputApp.image.imagePullSecret  }}
-      {{- end }}
+
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.probes.readiness.path | default "/healthz" | quote }}
+            port: {{ .Values.trustedOutputApp.service.targetPort }}
+          initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds | default 5 }}
+          periodSeconds: {{ .Values.probes.readiness.periodSeconds | default 10 }}
+          timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds | default 2 }}
+          failureThreshold: {{ .Values.probes.readiness.failureThreshold | default 3 }}
+
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.probes.liveness.path | default "/livez" | quote }}
+            port: {{ .Values.trustedOutputApp.service.targetPort }}
+          initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds | default 10 }}
+          periodSeconds: {{ .Values.probes.liveness.periodSeconds | default 10 }}
+          timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds | default 2 }}
+          failureThreshold: {{ .Values.probes.liveness.failureThreshold | default 3 }}
+
+        # Optional but recommended if app is slow to boot:
+        startupProbe:
+          httpGet:
+            path: {{ .Values.probes.startup.path | default "/healthz" | quote }}
+            port: {{ .Values.trustedOutputApp.service.targetPort }}
+          failureThreshold: {{ .Values.probes.startup.failureThreshold | default 30 }}
+          periodSeconds: {{ .Values.probes.startup.periodSeconds | default 5 }}
+
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
