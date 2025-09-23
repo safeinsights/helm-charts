@@ -138,7 +138,7 @@ setupApp:
     repository: setup-app
     ## @param setupApp.image.tag this defines the image tag
     ##
-    tag: 20250828-5a509a54
+    tag: 20250922-c171d87a
     ## @param setupApp.image.pullPolicy this defines the image pull policy
     ##
     pullPolicy: Always
