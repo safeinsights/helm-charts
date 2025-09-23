@@ -19,8 +19,6 @@ HARBOR_USERNAME=$(jq -r ".name" "$DOCKER_AUTH_FILE")
 HARBOR_PASSWORD=$(jq -r ".secret" "$DOCKER_AUTH_FILE")
 SERVER_ENDPOINT=$(jq -r ".serveraddress" "$DOCKER_AUTH_FILE")
 for var in HARBOR_USERNAME HARBOR_PASSWORD SERVER_ENDPOINT; do
-	echo "${!var}"
-  # ${!var} expands to the value of the variable whose name is stored in $var
   if [[ -z "${!var:-}" || "${!var}" == "null"  ]]; then
     echo "Error: $var is missing or empty" >&2
     exit 1
