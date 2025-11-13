@@ -1,0 +1,73 @@
+# ============================================================================
+# TEST CONNECTION NETWORK POLICY (Order: 40)
+# ============================================================================
+# PURPOSE: Helm test hook - validate TOA connectivity
+# SCOPE: Admin namespace (test pods only)
+# LIFECYCLE: Auto-deleted after successful test
+# ============================================================================
+
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: crd.projectcalico.org/v1
+kind: NetworkPolicy
+metadata:
+  name: test-connection-egress
+  namespace: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
+  annotations:
+    description: "Helm test policy - validates TOA connectivity"
+    version: "3.0.0-self-contained"
+    architecture: "self-contained-dns"
+    "helm.sh/hook": test
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  # ========================================
+  # SELECTOR: Test pods only
+  # ========================================
+  selector: test-connection == "true"
+  
+  order: 20
+  
+  types:
+    - Ingress
+    - Egress
+  
+  # ========================================
+  # INGRESS: Deny all (test pods don't receive traffic)
+  # ========================================
+  ingress: []
+  
+  egress:
+    # ========================================
+    # EXCEPTION 1: DNS Resolution (UDP - Primary)
+    # Test pods need DNS to resolve TOA service name
+    # ========================================
+    - action: Allow
+      protocol: UDP
+      destination:
+        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+        selector: k8s-app == "kube-dns"
+        ports:
+          - 53
+    
+    # ========================================
+    # EXCEPTION 2: DNS Resolution (TCP - Fallback)
+    # For large responses or when UDP fails
+    # ========================================
+    - action: Allow
+      protocol: TCP
+      destination:
+        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+        selector: k8s-app == "kube-dns"
+        ports:
+          - 53
+    
+    # ========================================
+    # EGRESS TO: TOA (connectivity test)
+    # ========================================
+    - action: Allow
+      protocol: TCP
+      destination:
+        selector: app == "{{ .Values.trustedOutputApp.name }}"
+        ports:
+          - {{ .Values.trustedOutputApp.service.targetPort }}
+{{- end }}

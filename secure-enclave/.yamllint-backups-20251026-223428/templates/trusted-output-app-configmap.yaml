@@ -1,0 +1,14 @@
+{{- if and .Values.trustedOutputApp.config.enabled .Values.trustedOutputApp.config.data }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.trustedOutputApp.config.name }}
+  namespace: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
+  labels:
+    {{- include "secure-enclave.labels" . | nindent 4 }}
+data:
+{{- range $k, $v := .Values.trustedOutputApp.config.data }}
+  {{ $k }}: {{ $v | quote }}
+{{- end }}
+{{- end }}
+

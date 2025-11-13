@@ -1,0 +1,35 @@
+{{- if .Values.trustedOutputApp.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Values.trustedOutputApp.name }}-hpa
+  namespace: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
+  labels:
+    {{- include "secure-enclave.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Values.trustedOutputApp.name }}
+  minReplicas: {{ .Values.trustedOutputApp.hpa.minReplicas | default .Values.hpa.minReplicas | default 2 }}
+  maxReplicas: {{ .Values.trustedOutputApp.hpa.maxReplicas | default .Values.hpa.maxReplicas | default 5 }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.trustedOutputApp.hpa.targetCPUUtilizationPercentage | default .Values.hpa.targetCPUUtilizationPercentage | default 70 }}
+    {{- if or .Values.trustedOutputApp.hpa.targetMemoryUtilizationPercentage .Values.hpa.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.trustedOutputApp.hpa.targetMemoryUtilizationPercentage | default .Values.hpa.targetMemoryUtilizationPercentage }}
+    {{- end }}
+  {{- if or .Values.trustedOutputApp.hpa.behavior .Values.hpa.behavior }}
+  behavior:
+    {{- toYaml (default .Values.hpa.behavior .Values.trustedOutputApp.hpa.behavior) | nindent 4 }}
+  {{- end }}
+{{- end }}

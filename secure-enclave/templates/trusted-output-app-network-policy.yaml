@@ -2,10 +2,10 @@
 apiVersion: crd.projectcalico.org/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ .Values.setupApp.name }}-network-policy
+  name: {{ .Values.trustedOutputApp.name }}-network-policy
   namespace: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
   annotations:
-    description: "Setup app - orchestration and lifecycle management"
+    description: "Trusted Output App - result submission and approval"
     version: "3.0.0-self-contained"
     architecture: "self-contained-dns"
     compliance: "management-api-audit-enabled"
@@ -13,26 +13,38 @@ metadata:
     logging: "enabled"
     {{- end }}
 spec:
-  selector: app == "{{ .Values.setupApp.name }}"
+  selector: app == "{{ .Values.trustedOutputApp.name }}"
   order: 10
   types:
     - Ingress
     - Egress
   
+  # ========================================
+  # INGRESS: From admin namespace + research pods
+  # ========================================
   ingress:
+    # From admin namespace (setup-app, other TOA pods)
     - action: Allow
       protocol: TCP
       source:
         namespaceSelector: kubernetes.io/metadata.name == "{{ .Values.adminNamespace | default "enclave-admin-ns" }}"
       destination:
         ports:
-          - {{ .Values.setupApp.service.targetPort | default 5051 }}
+          - {{ .Values.trustedOutputApp.service.targetPort | default 3002 }}
+    
+    # From research namespace (toa-access pods only)
+    - action: Allow
+      protocol: TCP
+      source:
+        namespaceSelector: kubernetes.io/metadata.name == "{{ .Values.researchNamespace | default "enclave-research-ns" }}"
+        selector: role == "toa-access"
+      destination:
+        ports:
+          - {{ .Values.trustedOutputApp.service.targetPort | default 3002 }}
   
   egress:
-
     # ========================================
     # EXCEPTION 1: DNS Resolution (UDP - Primary)
-    # Setup app needs DNS for name resolution
     # ========================================
     - action: Allow
       protocol: UDP
@@ -54,65 +66,66 @@ spec:
           - 53
     
     # ========================================
-    # EGRESS TO: Trusted Output App
+    # EGRESS TO: TOA-to-TOA (service mesh)
     # ========================================
-    {{- if and .Values.trustedOutputApp.enabled .Values.trustedOutputApp.service.enabled }}
     - action: Allow
       protocol: TCP
       destination:
-        namespaceSelector: kubernetes.io/metadata.name == "{{ .Values.adminNamespace }}"
         selector: app == "{{ .Values.trustedOutputApp.name }}"
         ports:
-          - {{ .Values.trustedOutputApp.service.targetPort }}
-    {{- end }}
+          - {{ .Values.trustedOutputApp.service.targetPort | default 3002 }}
     
     # ========================================
     # EGRESS TO: Management App (External via NAT)
     # ========================================
-    {{- with .Values.managementApp.networkPolicy.egressCidrs }}
-    {{- range $idx, $rule := . }}
+    {{- if .Values.managementApp.networkPolicy.egressCidrs }}
+    {{- range $idx, $rule := .Values.managementApp.networkPolicy.egressCidrs }}
     - action: Allow
       protocol: TCP
       destination:
         nets:
           - {{ .cidr }}
         ports:
-          - {{ $.Values.managementApp.endpoint.port | default 443 }}
+          - {{ .port | default $.Values.managementApp.endpoint.port | default 443 }}
       {{- if $.Values.calicoNetworkPolicy.logging.enableManagementApiCalls }}
       metadata:
         annotations:
           log: "true"
-          log-prefix: "SETUP-MGMT-API-{{ $idx }}"
+          log-prefix: "TOA-MGMT-API-{{ $idx }}"
           destination: "management-app"
           destination-cidr: "{{ .cidr }}"
           compliance: "audit-required"
       {{- end }}
     {{- end }}
+    {{- else }}
+    # Fallback: Allow HTTPS to management app
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets:
+          - 0.0.0.0/0
+        ports:
+          - {{ .Values.managementApp.endpoint.port | default 443 }}
+      {{- if .Values.calicoNetworkPolicy.logging.enableManagementApiCalls }}
+      metadata:
+        annotations:
+          log: "true"
+          log-prefix: "TOA-MGMT-API-FALLBACK"
+          destination: "management-app"
+          compliance: "audit-required"
+      {{- end }}
     {{- end }}
     
     # ========================================
-    # EGRESS TO: Kubernetes API (if enabled)
+    # EGRESS TO: Kubernetes API (optional)
     # ========================================
-    {{- if .Values.setupApp.networkPolicy.allowK8sApiEgress }}
-      {{- if .Values.setupApp.networkPolicy.k8sApiCidr }}
+    {{- if and .Values.trustedOutputApp.networkPolicy.allowK8sApiEgress .Values.trustedOutputApp.networkPolicy.k8sApiCidr }}
     - action: Allow
       protocol: TCP
       destination:
         nets:
-          - {{ .Values.setupApp.networkPolicy.k8sApiCidr }}
+          - {{ .Values.trustedOutputApp.networkPolicy.k8sApiCidr }}
         ports:
           - 443
-      {{- else }}
-      {{- $svc := lookup "v1" "Service" "default" "kubernetes" -}}
-      {{- if $svc }}
-    - action: Allow
-      protocol: TCP
-      destination:
-        nets:
-          - {{ printf "%s/32" $svc.spec.clusterIP }}
-        ports:
-          - 443
-      {{- end }}
-      {{- end }}
     {{- end }}
 {{- end }}

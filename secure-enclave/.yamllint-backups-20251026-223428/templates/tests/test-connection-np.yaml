@@ -1,0 +1,56 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: test-connection-egress
+  namespace: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  podSelector:
+    matchLabels:
+      test-connection: "true"
+  policyTypes:
+    - Ingress
+    - Egress
+
+  # Deny all inbound to the test pod
+  ingress: []
+
+  egress:
+    # 1) Allow egress to Setup App (same namespace)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: {{ .Values.setupApp.name | default "setup-app" }}
+      ports:
+        - protocol: {{ .Values.setupApp.service.protocol | default "TCP" }}
+          port: {{ .Values.setupApp.service.port | default 5051 }}
+
+    # 2) Allow DNS to CoreDNS (kube-system)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+
+    # 3) Allow HTTPS to SafeInsights/Harbor
+    {{- if .Values.managementApp.networkPolicy.egressCidrs }}
+    {{- range .Values.managementApp.networkPolicy.egressCidrs }}
+    - to:
+        - ipBlock: { cidr: {{ .cidr | quote }} }
+      ports:
+        - { protocol: TCP, port: {{ $.Values.managementApp.endpoint.port | default 443 }} }
+    {{- end }}
+    {{- else }}
+    # Fallback: allow port 443 to any destination (tighten later if needed)
+    - ports:
+        - { protocol: TCP, port: {{ .Values.managementApp.endpoint.port | default 443 }} }
+    {{- end }}
+

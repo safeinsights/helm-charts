@@ -1,330 +1,568 @@
-# Default values for secure-enclave.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
-# This is to override the chart name.
-nameOverride: ""
-fullnameOverride: ""
-
-## @param aws this defines the values configured when deployed on AWS.
-##
+nameOverride: ''
+fullnameOverride: ''
 aws:
-  ## @param aws.enabled this defines if AWS configurations are enabled.
-  ##
-  enabled: false
-  ## @param aws.storageClass this defines the storage class used for the deployment
-  ##
+  enabled: true     # flip to true when ready to create the SC
   storageClass:
-    ## @param aws.storageClass.name this defines the name of the storage class
-    ##
     name: aws-ebs-sc
-    ## @param aws.storageClass.provisioner this defines the storage class provisioner
-    ##
     provisioner: ebs.csi.aws.com
-    ## @param aws.storageClass.volumeBindingMode this defines the storage class volume binding mode
-    ##
     volumeBindingMode: WaitForFirstConsumer
-    ## @param aws.storageClass.parameters this defines the storage class parameters
-    ##
+    allowVolumeExpansion: true         # lets grow PVCs later
+    reclaimPolicy: Retain
+    storageclass.kubernetes.io/is-default-class: "true"
     parameters:
-      ## @param aws.storageClass.parameters.csi.storage.k8s.io/fstype this defines the filesystem type for the storage class
-      ##
-      csi.storage.k8s.io/fstype: xfs
-      ## @param aws.storageClass.parameters.type this defines the type of the storage class
-      ##
-      type: io1
-      ## @param aws.storageClass.parameters.iopsPerGB this defines the IOPS per GB for the storage
-      ##
-      iopsPerGB: "50"
-      ## @param aws.storageClass.parameters.encrypted  this defines if the storage is encrypted
-      ##
+      type: gp3
       encrypted: "true"
-    ## @params aws.storageClass.allowedTopologies this defines the allowed toplogies, for eg. the zone where the storage class will be created in.
-    ##
-    allowedTopologies:
-      - matchLabelExpressions:
-          - key: topology.ebs.csi.aws.com/zone
-            values:
-              - us-east-1
-
-## @param networkPolicy this defines if the network policy restrictions are enforced.
-## Few limitations:
-## FQDNs Egress restrictions
-## TODO. Enforce Ingress only to some pods
-##
+      csi.storage.k8s.io/fstype: xfs
+    # allowedTopologies:  # optional; usually omit with WaitForFirstConsumer
+    #   - matchLabelExpressions:
+    #       - key: topology.ebs.csi.aws.com/zone
+    #         values: ["us-east-2a","us-east-2b","us-east-2c"]
 networkPolicy:
-  ## @param networkPolicy.enabled this enables or  disables the network policy
-  enabled: false
+  enabled: true
 
-## @param managementApp this defines all the configurations related to the management app
-##
+
+# ============================================================================
+# CALICO NETWORK POLICY CONFIGURATION - ENHANCED
+# ============================================================================
+# VERSION: 2.0.0-enhanced
+# PURPOSE: Centralized configuration for enhanced Calico policies
+# ============================================================================
+
+calicoNetworkPolicy:
+  # Enable enhanced features
+  useEnhanced: true
+
+
+  # ========================================
+  # LOGGING CONFIGURATION
+  # PURPOSE: Compliance and audit trails
+  # ========================================
+  logging:
+    # Log all DNS queries (default: false, high volume)
+    enableDnsLogging: false
+
+    # Log research pod egress (data access audit)
+    enableResearchEgress: true
+
+    # Log management API calls (compliance requirement)
+    enableManagementApiCalls: true
+
+    # Log all TOA traffic (result submission audit)
+    enableToaTraffic: true
+
+    # Global log level
+    logLevel: "info"  # Options: debug, info, warn, error
+
+    # Log retention (handled by Calico/Fluentd)
+    logRetentionDays: 90
+
+    # Log format
+    logFormat: "json"  # Options: json, text
+
+    # Log destination
+    logDestination: "syslog"  # Options: syslog, file, stdout
+
+  # ========================================
+  # POLICY ORDERING
+  # PURPOSE: Explicit evaluation order
+  # ========================================
+  policyOrder:
+    globalDns: 1           # Global DNS (highest priority)
+    defaultDeny: 10        # Default deny all
+    research: 20           # Research pod egress
+    setupApp: 25           # Setup app ingress/egress
+    trustedOutputApp: 30   # TOA ingress/egress
+    testConnection: 40     # Test pods (lowest priority)
+
+
+# ============================================================================
+# HARBOR Image pull
+# ============================================================================
+harbor:
+  externalSecret:
+    enabled: true
+    awsSecretName: prod/harbor/research-robot-credentials
+    refreshInterval: 1h
+# ============================================================================
+# MONITORING
+# ============================================================================
+monitoring:
+  applicationNamespaces:
+    - "enclave-admin-ns"
+    - "enclave-research-ns"
+
+
+# ============================================================================
+# Management App Configuration (External Service)
+# ============================================================================
+# The Management App is an EXTERNAL service (app.safeinsights.org)
+# NOT deployed in this cluster. Your apps make API calls to it.
+# ============================================================================
 managementApp:
-  ## @param managementApp.memberId this defines the id of the member deploying the enclave
-  ##
-  memberId:
-  ## @param managementApp.endpoint this defines the endpoint where the management app is available.
-  ##
   endpoint:
-    ## @param managementApp.endpoint.protocol this defines the protocol used to access the management app
-    ##
     protocol: https
-    ## @param managementApp.endpoint.host this defines the host where the management app is available
-    ## This value is required
     host: app.safeinsights.org
-    ## @param managementApp.endpoint.port this defines the port where the management app is available
-    ##
     port: 443
-  ## @param managementApp.privateKey this defines the private key of the member deploying the enclave
-  ##
-  privateKey:
-    ## @param managementApp.privateKey.secretName this defines the name of the secret containing the private key
+  externalSecret:
+    enabled: true
     secretName: management-app-secret
-    ## @param managementApp.privateKey.key this defines the key of the private key in the secret
-    key: private-key
+    awsSecretName: prod/management/app/creds
+    refreshInterval: 1h
+    secretStoreRef:
+      kind: ClusterSecretStore
+      name: aws-sm
+  privateKey:
+    enabled: true
+    awsSecretName: prod/management/app/creds
+    secretName: management-app-secret
+    refreshInterval: 1h
+  networkPolicy:
+    egressCidrs:
+      # - cidr: "13.32.205.0/24"
+      - cidr: "3.160.22.0/24"      # app.safeinsights.org
+      - cidr: "44.207.122.80/32"   # Harbor registry
 
-## @param setupApp this defines the setup app configuration
-##
+# ============================================================================
+# Setup App Configuration
+# ============================================================================
 setupApp:
-  ## @param setupApp.enabled this defines if the setup app should be deployed
-  ##
   enabled: true
-  ## @param setupApp.name this defines the name of the deployment and containers for the setup app
-  ##
   name: setup-app
-  ## @param setupApp.serviceAccount this defines the service account used by setup account to manage the research container and also access the Kubernetes API
-  ##
-  serviceAccount:
-    annotations:
-      kubernetes.io/enforce-mountable-secrets: "true"
-  ## @param setupApp.persistence this defines the persistence configuration for the setup app.
-  ##
-  persistence:
-    ## @param setupApp.persistence.enabled this defines if the persistence should be enabled during the deployment
-    ##
-    enabled: false
-    ## @param setupApp.persistence.storageClassName this defines the storageClassName used for the persitence
-    ##
-    storageClassName: aws-ebs-sc
-    ## @param setupApp.persistence.pvcSize this defines the size set for the the persitence
-    ##
-    pvcSize: 1Gi
-    ## @param setupApp.persistence.accessModes this defines the access modes used for the persitence
-    ##
-    accessModes:
-      - ReadWriteOnce
-  ## @param setupApp.service this defines the service on which the setup App will be accessible
-  ##
-  service:
-    ## @param setupApp.service.type this defines the service type
-    ##
-    type: ClusterIP
-    ## @param setupApp.service.protocol this defines the service protocol
-    ##
-    protocol: TCP
-    ## @param setupApp.service.port this defines the service external port
-    ##
-    port: 5051
-    ## @param setupApp.service.targetPort this defines the container internal port that the service redirects to.
-    ##
-    targetPort: 5051
-  ## @param setupApp.image this defines the image configuration for the setup app
-  ##
-  image:
-    ## @param setupApp.image.registry this defines the image registry
-    ##
-    registry: harbor.safeinsights.org/safeinsights-public
-    ## @param setupApp.image.repository this defines the image repository
-    ##
-    repository: setup-app
-    ## @param setupApp.image.tag this defines the image tag
-    ##
-    tag: 20250922-c171d87a
-    ## @param setupApp.image.pullPolicy this defines the image pull policy
-    ##
-    pullPolicy: Always
-  ## @param setupApp.workingDir this defines the working directory inside the setup app container
-  ##
-  workingDir: /home/node/code
-  ## @param setupApp.command this defines the command to start the setup app container
-  ##
-  command: ["npx", "tsx", "src/scripts/poll.ts"]
-  ## @param setupApp.environmentVariables this defines the setup app environment variables
-  ##
-  environmentVariables:
-    ## @param setupApp.environmentVariables.k8sApiServer this defines the Kubernetes API endpoint
-    ##
-    k8sApiServer: https://kubernetes.default.svc.cluster.local
-    ## @param setupApp.environmentVariables.k8sServiceAccountPath this defines the setup app service account secret mounting path
-    ##
-    k8sServiceAccountPath: /var/run/secrets/kubernetes.io/serviceaccount
-    ## @param setupApp.environmentVariables.harborPullSecret this configures the pull secret from harbor
-    ##
-    harborPullSecret: si-docker-config
-    ## @param setupApp.environmentVariables.toaApiIUrl this defines the trusted output app endpoint
-    ##
-    toaApiIUrl: http://toa-svc:5050
-    ## @param setupApp.environmentVariables.pollIntervall this overrides the setup app polling interval
-    ##
-    pollIntervall: "60000"
-## @param trustedOutputApp this defines the trusted output app configuration
-##
-trustedOutputApp:
-  ## @param trustedOutputApp.enabled this defines if the trusted output app should be deployed
-  ##
-  enabled: true
-  ## @param trustedOutputApp.name this defines the name of the deployment and containers for the trusted output app
-  ##
-  name: toa
-  ## @param trustedOutputApp.persistence this defines the persistence configuration for the trusted output app.
-  ##
-  persistence:
-    ## @param trustedOutputApp.persistence.enabled this defines if the persistence should be enabled during the deployment
-    ##
-    enabled: false
-    ## @param trustedOutputApp.persistence.storageClassName this defines the storageClassName used for the persitence
-    ##
-    storageClassName: aws-ebs
-    ## @param trustedOutputApp.persistence.pvcSize this defines the size set for the the persitence
-    ##
-    pvcSize: 1Gi
-    ## @param trustedOutputApp.persistence.accessModes this defines the access modes used for the persitence
-    ##
-    accessModes:
-      - ReadWriteOnce
-  ## @param trustedOutputApp.service this defines the service on which the trusted output App will be accessible
-  ##
-  service:
-    ## @param trustedOutputApp.service.type this defines the service type
-    ##
-    type: ClusterIP
-    ## @param trustedOutputApp.service.protocol this defines the service protocol
-    ##
-    protocol: TCP
-    ## @param trustedOutputApp.service.port this defines the service external port
-    ##
-    port: 5050
-    ## @param trustedOutputApp.service.targetPort this defines the container internal port that the service redirects to.
-    ##
-    targetPort: 3002
-  ## @param trustedOutputApp.image this defines the image configuration for the trusted output app
-  ##
-  image:
-    ## @param trustedOutputApp.image.registry this defines the image registry
-    ##
-    registry: harbor.safeinsights.org/safeinsights-public
-    ## @param trustedOutputApp.image.repository this defines the image repository
-    ##
-    repository: trusted-output-app
-    ## @param trustedOutputApp.image.tag this defines the image tag
-    ##
-    tag: 20250728-a5d087fc
-    ## @param trustedOutputApp.image.pullPolicy this defines the image pull policy
-    ##
-    pullPolicy: Always
-  ## @param trustedOutputApp.workingDir this defines the working directory inside the setup app container
-  ##
-  workingDir: /home/node/app
-  ## @param trustedOutputApp.command this defines the command to start the trusted output app container
-  ##
-  command: ["npm", "run", "start"]
-  ## @param trustedOutputApp.environmentVariables this defines the trusted outptu app environment variables
-  ##
-  environmentVariables:
-    ## @param setupApp.environmentVariables.httpBasicAuth this defines the basic authentication for the trusted output app connection
-    ##
-    httpBasicAuth: admin:admin
-## @param researchContainer this defines the research container app configuration
-##
-researchContainer:
-  ## @param researchContainer.name this defines the name of the jobs and containers for the research
-  ##
-  name: research
+  replicas: 2  # Used when HPA is disabled; ignored when HPA is enabled
+  priorityClassName: enclave-high-priority
+  terminationGracePeriodSeconds: 60
+  rbac:
+    allowedSecretNames: []
+    allowJobCreate: false
+    allowJobDelete: false
+    research:
+      allowPodExec: false
+      readLogs: true
+      watchEvents: true
+      jobs: true
 
-# This is for setting Kubernetes Annotations to a Pod.
-# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+  serviceAccount:
+    create: true
+    name: ""
+    secrets:
+      - management-app-secret
+      - internal-auth-credentials
+    automountServiceAccountToken: true
+    annotations: {}
+      #kubernetes.io/enforce-mountable-secrets: 'true'
+
+  persistence:
+    enabled: false
+    create: true
+    storageClassName: aws-ebs-sc
+    accessModes:
+      - ReadWriteOnce
+    pvcSize: 20Gi
+    mountPath: /var/lib/setup-app
+    volumeName: data
+    annotations: {}
+
+  resources:
+    requests:
+      cpu: 100m              
+      memory: 256Mi          
+      ephemeral-storage: 512Mi
+    limits:
+      cpu: 1000m             
+      memory: 1Gi     
+      ephemeral-storage: 2Gi
+
+  service:
+    enabled: true
+    type: ClusterIP
+    protocol: TCP
+    portName: http
+    port: 5051        # Service port (external)
+    targetPort: 5051  # Container port (internal)
+    annotations: {}
+
+  pod:
+    nodeSelector:
+      role: "workloads"
+
+  image:
+    registry: harbor.safeinsights.org/safeinsights-public
+    repository: setup-app
+    digest: "sha256:2e3e5c74157156338df59eae4984f54e81bf36d393f7f2484e3c328877674072"
+    tag: ""
+    pullPolicy: Always
+
+  # Image pull secrets for Harbor registry
+  # Leave empty if Harbor is public; add secret name if private
+  imagePullSecrets: []
+  # imagePullSecrets:
+  #   - harbor-pull-secret
+
+  # Setup App specific secrets (from AWS Secrets Manager)
+  secret:
+    enabled: false
+    name: internal-auth-credentials
+
+  externalSecret:
+    enabled: false
+    secretStoreRef:
+      kind: ClusterSecretStore
+      name: aws-sm
+    awsSecretName: prod/enclave/internal-auth
+    targetSecretName: internal-auth-credentials
+    refreshInterval: 1h
+
+  config:
+    enabled: true
+    name: setup-app-config
+    data:
+      DEPLOYMENT_ENVIRONMENT: KUBERNETES
+      K8S_APISERVER: https://kubernetes.default.svc.cluster.local
+      K8S_SERVICEACCOUNT_PATH: /var/run/secrets/kubernetes.io/serviceaccount
+      TOA_BASE_URL: http://toa-svc:5050
+      POLL_STUDIES_INTERVAL_SECONDS: "30"
+      POLL_ERRORED_JOBS_INTERVAL_SECONDS: "60"
+
+
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
+  # FIXED: Disabled toaAccessLabel to prevent duplicate role label
+  # Role is now set via podLabels.role instead (see below)
+  toaAccessLabel:
+    enabled: false
+    key: role
+    value: setup-app
+
+  # FIXED: Added role label for proper pod identity
+  podLabels:
+    app.kubernetes.io/component: setup-app
+    role: setup-app
+
+  workingDir: /home/node/code
+  command:
+    - npx
+    - tsx
+    - src/scripts/poll.ts
+
+  networkPolicy:
+    allowK8sApiEgress: true
+    # k8sApiCidr: "172.20.0.1/32"       # Specific K8s API service IP
+    k8sApiCidr: "10.52.0.0/16"
+
+
+
+# ============================================================================
+# Trusted Output App Configuration
+# ============================================================================
+trustedOutputApp:
+  enabled: true
+  name: toa
+  replicas: 1  # Used when HPA is disabled; ignored when HPA is enabled
+  hpa:
+    enabled: false  # ← TOA-specific: DISABLE HPA
+  priorityClassName: system-cluster-critical
+  terminationGracePeriodSeconds: 60
+  serviceAccount:
+    create: true
+    name: ""
+    secrets:
+      - management-app-secret
+      - internal-auth-credentials
+    automountServiceAccountToken: false
+    annotations: {}
+      #kubernetes.io/enforce-mountable-secrets: 'true'
+
+  persistence:
+    enabled: true
+    create: true
+    storageClassName: aws-ebs-sc
+    accessModes:
+      - ReadWriteOnce
+    pvcSize: 10Gi
+    mountPath: /var/lib/trusted-output-app
+    volumeName: data
+    annotations: {}
+
+  resources:
+    requests:
+      cpu: 100m              
+      memory: 256Mi         
+      ephemeral-storage: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+      ephemeral-storage: 2Gi
+
+
+  service:
+    enabled: true
+    type: ClusterIP
+    protocol: TCP
+    portName: http
+    port: 5050        # Service port (external)
+    targetPort: 3002  # Container port (internal)
+    annotations: {}
+
+  pod:
+    nodeSelector:
+      role: "workloads"
+
+  image:
+    registry: harbor.safeinsights.org/safeinsights-public
+    repository: trusted-output-app
+    digest: "sha256:59c4b63745d0975e2dfa76785b6682a263335e46dd698b4c97be97ff884db0c3"
+    tag: ""
+    pullPolicy: Always
+
+  imagePullSecrets: []
+
+  secret:
+    enabled: false
+    name: internal-auth-credentials
+
+  externalSecret:
+    enabled: false
+    awsSecretName: prod/enclave/internal-auth
+    refreshInterval: 1h
+    secretStoreRef:
+      kind: ClusterSecretStore
+      name: aws-sm
+
+  config:
+    enabled: true
+    name: trusted-output-app-config
+    data:
+      LOG_LEVEL: "info"
+      ENABLE_AUDIT: "true"
+      PORT: "3002"
+      NODE_ENV: "production"        
+      HOSTNAME: "0.0.0.0" 
+
+
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
+  # FIXED: Disabled (TOA template doesn't use toaAccessLabel anyway)
+  # Role is set via podLabels.role instead (see below)
+  toaAccessLabel:
+    enabled: false
+    key: role
+    value: toa
+
+  # FIXED: Added role label for proper pod identity
+  podLabels:
+    app.kubernetes.io/component: toa
+    role: toa
+
+  workingDir: /home/node/app
+  command:
+    - npm
+    - run
+    - start
+
+  networkPolicy:
+    allowK8sApiEgress: false
+    k8sApiCidr: "10.100.0.1/32"
+
+  environmentVariables:
+    httpBasicAuth: admin:admin
+
+
+# ============================================================================
+# Research Container Configuration
+# ============================================================================
+researchContainer:
+  name: research
+  placeholderName: research-placeholder
+  replicas: 2
+  placeholderContainerName: nop
+  automountServiceAccountToken: false
+  podAnnotations: {}
+  podLabels:
+    role: toa-access  # ← REQUIRED for TOA access
+    app.kubernetes.io/component: research
+    environment: prod
+    team: data
+
+  # R-Base Image from Harbor
+  image:
+    registry: harbor.safeinsights.org
+    repository: aem-k8s/r-base
+    tag: "4.5.1-2025-10-22-v2"
+    digest: "sha256:eb9771e7b9b12abbc1ed86f7b7c81882b105548f11ff71c43ca78e484458b5bf"
+    pullPolicy: Always
+  
+  # Harbor pull secret
+  imagePullSecrets:
+    - research-image-pull-secret
+  
+  # Command - R container will likely override this
+  command:
+    - sh
+    - -c
+    - sleep 3600
+  
+  priorityClassName: system-cluster-critical
+    
+  resources:
+    requests:
+      cpu: 100m              
+      memory: 512Mi
+      ephemeral-storage: 1Gi
+    limits:
+      cpu: 2000m             
+      memory: 4Gi     
+      ephemeral-storage: 10Gi
+
+  # ========================================
+  # STORAGE CONFIGURATION
+  # ========================================
+  storage:
+    # ----------------------------------------
+    # Option 1: Member-Provided EFS Dataset
+    # ----------------------------------------
+    # Use when: Member's dataset is already on EFS
+    # Method: Static NFS mount (simple, no CSI driver needed)
+    # Toggle: Set enabled=true and provide fileSystemId when member has EFS
+    # ----------------------------------------
+    memberEfs:
+      enabled: false                          # Enable when member provides EFS
+      fileSystemId: ""                        # e.g., "fs-0abcd1234efgh5678"
+      region: "us-east-2"                     # AWS region
+      path: "/"                               # Path within EFS (usually "/")
+      mountPath: "/data/input"                # Where to mount in container
+      readOnly: true                          # Always read-only for member data
+    
+
+    # ----------------------------------------
+    # Option 2: EmptyDir Working Storage (ENABLED)
+    # ----------------------------------------
+    # DECISION: Primary storage for stateless research pods
+    # BENEFITS: Fast (node-local), auto-cleanup, no cost, scales infinitely
+    # SIZE: Large enough for data processing (100Gi)
+    # ----------------------------------------
+    emptyDir:
+      enabled: true
+      workStorage:
+        sizeLimit: 100Gi                      # Working data space
+        mountPath: "/data/work"
+      tmpStorage:
+        sizeLimit: 10Gi                       # R temp files
+        mountPath: "/tmp"
+
+
+# ============================================================================
+# Test Connection Configuration
+# ============================================================================
+testConnection:
+  enabled: true
+  image:
+    registry: "354918363956.dkr.ecr.us-east-2.amazonaws.com"
+    repository: "test-images/curl"
+    tag: "8.9.1"
+    pullPolicy: IfNotPresent
+  connectTimeout: 5
+  maxTime: 10
+  healthPath: /healthz/ready
+
+
+
+# ============================================================================
+# Global Defaults
+# ============================================================================
+replicaCount: 2
 podAnnotations: {}
-# This is for setting Kubernetes Labels to a Pod.
-# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-podLabels: {}
+podLabels:
+  environment: prod
+  team: data
 
 podSecurityContext:
-  {}
-  # fsGroup: 2000
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
 
 securityContext:
-  {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+  capabilities:
+    drop: ["ALL"]
 
-# This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
   enabled: false
-  className: ""
-  annotations:
-    {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
+  className: ''
+  annotations: {}
   hosts:
     - host: chart-example.local
       paths:
         - path: /
           pathType: ImplementationSpecific
   tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
 
 resources:
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  limits:
-    cpu: 100m
-    memory: 128Mi
   requests:
     cpu: 100m
     memory: 128Mi
+    ephemeral-storage: 512Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+    ephemeral-storage: 2Gi
 
-# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+emptyDir:
+  enabled: true
+  sizeLimit: 2Gi
+  mountPath: /tmp
+
 livenessProbe:
   httpGet:
     path: /
     port: http
+  initialDelaySeconds: 30
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 3
+
 readinessProbe:
   httpGet:
     path: /
     port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 2
+  successThreshold: 1
 
-# This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
+startupProbe:
+  httpGet:
+    path: /
+    port: http
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+  initialDelaySeconds: 0
 
-# Additional volumes on the output Deployment definition.
 volumes: []
-# - name: foo
-#   secret:
-#     secretName: mysecret
-#     optional: false
-
-# Additional volumeMounts on the output Deployment definition.
 volumeMounts: []
-# - name: foo
-#   mountPath: "/etc/foo"
-#   readOnly: true
 
 nodeSelector:
-  {}
-  # kubernetes.io/os: linux
-# -- Affinity rules for scheduling the pod. If an explicit label selector is not provided for pod affinity or pod anti-affinity one will be created from the pod selector labels.
+  role: workloads
+
+tolerations:
+  - key: dedicated
+    operator: Equal
+    value: workloads
+    effect: NoSchedule
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
@@ -334,13 +572,195 @@ affinity:
               operator: DoesNotExist
   podAntiAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
-      - topologyKey: "kubernetes.io/hostname"
-# -- Topology spread constraints to increase the controller resilience by distributing pods across the cluster zones. If an explicit label selector is not provided one will be created from the pod selector labels.
+      - topologyKey: kubernetes.io/hostname
+
 topologySpreadConstraints:
-  - maxSkew: 1
-    topologyKey: topology.kubernetes.io/zone
-    whenUnsatisfiable: DoNotSchedule
-# -- Tolerations to allow the pod to be scheduled to nodes with taints.
-tolerations:
-  - key: CriticalAddonsOnly
-    operator: Exists
+  enabled: true
+  rules:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: DoNotSchedule
+
+pdb:
+  enabled: true
+  maxUnavailable: 1
+
+antiAffinity:
+  enabled: true
+  required: false
+
+topologySpread:
+  enabled: true
+  topologyKey: topology.kubernetes.io/zone
+
+# ============================================================================
+# Horizontal Pod Autoscaler (HPA)
+# ============================================================================
+# NOTE: This replaces the old "autoscaling" section (removed)
+# HPA automatically scales pods based on CPU/memory utilization
+# When HPA is enabled, static replicaCount is ignored
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 80
+
+image:
+  pullPolicy: Always
+
+# SECURITY FIX: Changed global default from true to false
+automountServiceAccountToken: false
+
+# ============================================================================
+# Namespace Configuration
+# ============================================================================
+bootstrapNamespaces: false
+adminNamespace: enclave-admin-ns
+researchNamespace: enclave-research-ns
+environment: prod
+team: data
+
+# ============================================================================
+# Research Network Egress
+# ============================================================================
+researchEgressCidrs:
+  - { cidr: "10.2.0.0/16", port: 5432 }   # RDS
+  - { cidr: "10.2.0.0/16", port: 5439 }   # Redshift
+  - { cidr: "192.168.0.0/16", port: 443 }      # S3 via Gateway Endpoint
+
+# ============================================================================
+# External Secrets Operator Configuration
+# ============================================================================
+externalSecretsEnabled: true
+externalSecret:
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: aws-sm
+
+# ============================================================================
+# Internal Auth (Setup ↔ TOA ↔ Research Communication)
+# ============================================================================
+internalAuth:
+  enabled: true
+  awsSecretName: prod/enclave/internal-auth       # AWS Secrets Manager path
+  refreshInterval: 1h
+  isJson: true
+  k8sSecretName: internal-auth-credentials        # K8s secret name (both namespaces)
+  taoBasicAuth: TOA_BASIC_AUTH
+  signingKey: SIGNING_KEY                                # Key in the K8s secret
+  volumeName: internal-auth                       # Volume name in deployment
+  mountPath: /etc/secrets/internal-auth           # Where to mount in container
+  pathEnvVar: INTERNAL_AUTH_PATH                  # Env var name for path
+  defaultMode: 0400                                # File permissions
+
+
+# ============================================================================
+# Audit Configuration
+# ============================================================================
+audit:
+  placeholders:
+    research: true
+
+
+
+# ----------------------------------------------------------------------------
+# KUBERNETES CORE SERVICES
+# ----------------------------------------------------------------------------
+kubeSystem:
+  # Service CIDR (where K8s services like CoreDNS live)
+  serviceCidr: "172.20.0.0/16"
+
+  # VPC CIDR (your AWS VPC network range)
+  vpcCidr: "10.52.0.0/16"
+
+  # Control Plane CIDR
+  controlPlaneCidr: "10.52.0.0/16"
+
+  # Pod CIDR (if using overlay network)
+
+  # Kubernetes API Server
+  apiServer:
+    ip: "172.20.0.1"
+    port: 443
+
+  # CoreDNS Service
+  coreDns:
+    ip: "172.20.0.10"
+    dnsPort: 53
+    dnsTcpPort: 53
+    metricsPort: 9153
+
+# ----------------------------------------------------------------------------
+# CNI CONFIGURATION
+# ----------------------------------------------------------------------------
+cni:
+  type: "calico"
+  calico:
+    typhaPort: 5473
+    nodeMetricsPort: 9091
+    bgpPort: 179
+
+# ----------------------------------------------------------------------------
+# INFRASTRUCTURE COMPONENTS
+# ----------------------------------------------------------------------------
+infrastructure:
+  # Metrics Server
+  metricsServer:
+    enabled: true
+    ip: "172.20.167.223"
+    port: 443
+
+  # External Secrets Operator
+  externalSecrets:
+    enabled: true
+    webhookIp: "172.20.246.71"
+    webhookPort: 443
+
+# ----------------------------------------------------------------------------
+# NODE PORTS (Kubernetes Standards)
+# ----------------------------------------------------------------------------
+nodePorts:
+  # These are standard Kubernetes ports that don't change
+  kubelet: 10250                # Kubelet API
+  kubeletReadOnly: 10255        # Kubelet read-only (deprecated)
+  nodePortRange: "30000-32767"  # Default NodePort service range
+
+# ----------------------------------------------------------------------------
+# AWS SPECIAL ADDRESSES (Link-Local, Same Globally)
+# ----------------------------------------------------------------------------
+awsAddresses:
+  # Instance Metadata Service (IMDS)
+  imds:
+    ip: "169.254.169.254"
+    port: 80
+
+  # AWS Time Sync Service
+  timeSync:
+    ip: "169.254.169.123"
+    port: 123
+
+  # EKS Pod Identity
+  podIdentity:
+    ip: "169.254.170.23"
+    port: 80
+
+  # EC2 Instance Connect
+  instanceConnect:
+    ip: "169.254.169.254"
+    port: 80
+
+# ----------------------------------------------------------------------------
+# NAT GATEWAY EGRESS
+# ----------------------------------------------------------------------------
+natGateway:
+  egressCidrs:
+    - cidr: "3.18.49.59/32"
+      description: "NAT Gateway Elastic IP"
+
+

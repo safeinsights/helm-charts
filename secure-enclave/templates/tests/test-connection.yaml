@@ -1,15 +1,76 @@
+---
 apiVersion: v1
 kind: Pod
 metadata:
   name: "{{ include "secure-enclave.fullname" . }}-test-connection"
+  namespace: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
   labels:
     {{- include "secure-enclave.labels" . | nindent 4 }}
+    test-connection: "true"
   annotations:
     "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
-  containers:
-    - name: wget
-      image: busybox
-      command: ['wget']
-      args: ['{{ include "secure-enclave.fullname" . }}']
+  automountServiceAccountToken: {{ .Values.automountServiceAccountToken | default false }}
+  # replicas: 0 
+  {{- if .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml .Values.imagePullSecrets | nindent 4 }}
+  {{- end }}
+  
+  securityContext:
+    {{- toYaml .Values.podSecurityContext | nindent 4 }}
+  
   restartPolicy: Never
+
+  volumes:
+    - name: tmp
+      emptyDir:
+        sizeLimit: {{ .Values.emptyDir.sizeLimit | default "256Mi" }}
+
+  containers:
+    - name: curl
+      {{- if .Values.testConnection.image.digest }}
+      image: {{ .Values.testConnection.image.registry | default "354918363956.dkr.ecr.us-east-2.amazonaws.com" }}/{{ .Values.testConnection.image.repository | default "test-images/curl" }}@{{ .Values.testConnection.image.digest }}
+      {{- else }}
+      image: {{ .Values.testConnection.image.registry | default "354918363956.dkr.ecr.us-east-2.amazonaws.com" }}/{{ .Values.testConnection.image.repository | default "test-images/curl" }}:{{ .Values.testConnection.image.tag | default "8.9.1" }}
+      {{- end }}
+      
+      imagePullPolicy: {{ .Values.testConnection.image.pullPolicy | default "Always" }}
+      
+      command: ["sh", "-c"]
+      args:
+        - >
+          echo "Testing connection to {{ .Values.trustedOutputApp.name }}-svc:{{ .Values.trustedOutputApp.service.port }}/";
+          curl -fsS 
+          -u admin:admin
+          --connect-timeout {{ .Values.testConnection.connectTimeout | default 5 }} 
+          --max-time {{ .Values.testConnection.maxTime | default 10 }}
+          http://{{ .Values.trustedOutputApp.name }}-svc:{{ .Values.trustedOutputApp.service.port }}/ &&
+          echo "✅ Connection test PASSED" ||
+          (echo "❌ Connection test FAILED" && exit 1)
+      
+      # Use global container security context
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      
+      volumeMounts:
+        - name: tmp
+          mountPath: {{ .Values.emptyDir.mountPath | default "/tmp" }}
+      
+      # Use global resources
+      resources:
+        {{- toYaml .Values.resources | nindent 8 }}
+      
+      livenessProbe:
+        exec:
+          command: ["sh", "-c", "pgrep curl || exit 0"]
+        initialDelaySeconds: 1
+        periodSeconds: 2
+        failureThreshold: 10
+      
+      readinessProbe:
+        exec:
+          command: ["sh", "-c", "exit 0"]
+        initialDelaySeconds: 1
+        periodSeconds: 2

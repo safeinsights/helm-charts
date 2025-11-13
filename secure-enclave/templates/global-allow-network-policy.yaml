@@ -1,0 +1,45 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: crd.projectcalico.org/v1
+kind: GlobalNetworkPolicy
+metadata:
+  name: global-allow-dns
+  annotations:
+    description: "Allow DNS traffic to/from CoreDNS for all namespaces"
+    version: "1.0.0"
+    architecture: "cluster-wide-dns-baseline"
+    security-posture: "required-for-functionality"
+spec:
+  # This selector targets the DESTINATION (CoreDNS) for ingress checks
+  selector: k8s-app == "kube-dns"
+  order: 1
+  types:
+    - Ingress
+    - Egress
+  ingress:
+    # DNS queries (UDP - primary protocol)
+    - action: Allow
+      protocol: UDP
+      destination:
+        ports:
+          - 53
+
+    # DNS queries (TCP - fallback for large responses)
+    - action: Allow
+      protocol: TCP
+      destination:
+        ports:
+          - 53
+  
+  # ========================================
+  # EGRESS: Allow CoreDNS to respond and forward
+  # ========================================
+  egress:
+    # Allow CoreDNS to respond to queries (UDP)
+    - action: Allow
+      protocol: UDP
+    
+    # Allow CoreDNS to respond to queries (TCP)
+    - action: Allow
+      protocol: TCP
+
+{{- end }}

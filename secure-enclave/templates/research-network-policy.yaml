@@ -1,20 +1,102 @@
-{{- if .Values.networkPolicy.enabled -}}
-apiVersion: networking.k8s.io/v1
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: crd.projectcalico.org/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ .Values.researchContainer.name }}-network-policy
+  name: {{ .Values.researchContainer.name }}-egress
+  namespace: {{ .Values.researchNamespace }}
+  annotations:
+    description: "Research pod egress - TOA submission + data sources"
+    version: "3.0.0-self-contained"
+    architecture: "self-contained-dns"
+    compliance: "audit-enabled"
+    {{- if .Values.calicoNetworkPolicy.logging.enableResearchEgress }}
+    logging: "enabled"
+    {{- end }}
 spec:
-  podSelector:
-    matchLabels:
-      role: {{ .Values.researchContainer.name }}
-  policyTypes:
-  - Egress
+  # ========================================
+  # SELECTOR: Research pods with toa-access role
+  # ========================================
+  selector: role == "{{ .Values.researchContainer.podLabels.role | default "toa-access" }}"
+
+  order: 10
+  
+  types:
+    - Egress
+  
   egress:
-    - ports:
-        - protocol: {{ .Values.trustedOutputApp.service.protocol }}
-          port: {{ .Values.trustedOutputApp.service.port }}
-      to:
-        - podSelector:
-            matchLabels:
-              app: {{ .Values.trustedOutputApp.name }}
-{{- end}}
+    # ========================================
+    # EXCEPTION 1: DNS Resolution (UDP - Primary)
+    # ========================================
+    - action: Allow
+      protocol: UDP
+      destination:
+        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+        selector: k8s-app == "kube-dns"
+        ports:
+          - 53
+      {{- if .Values.calicoNetworkPolicy.logging.enableResearchEgress }}
+      metadata:
+        annotations:
+          log: "true"
+          log-prefix: "RESEARCH-DNS-UDP"
+          description: "DNS query (UDP)"
+      {{- end }}
+    
+    # ========================================
+    # EXCEPTION 2: DNS Resolution (TCP - Fallback)
+    # ========================================
+    - action: Allow
+      protocol: TCP
+      destination:
+        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+        selector: k8s-app == "kube-dns"
+        ports:
+          - 53
+      {{- if .Values.calicoNetworkPolicy.logging.enableResearchEgress }}
+      metadata:
+        annotations:
+          log: "true"
+          log-prefix: "RESEARCH-DNS-TCP"
+          description: "DNS query (TCP)"
+      {{- end }}
+    
+    # ========================================
+    # EGRESS TO: Trusted Output App (TOA)
+    # ========================================
+    - action: Allow
+      protocol: TCP
+      destination:
+        namespaceSelector: kubernetes.io/metadata.name == "{{ .Values.adminNamespace | default "enclave-admin-ns" }}"
+        selector: app == "{{ .Values.trustedOutputApp.name }}"
+        ports:
+          - {{ .Values.trustedOutputApp.service.targetPort }}
+      {{- if .Values.calicoNetworkPolicy.logging.enableResearchEgress }}
+      metadata:
+        annotations:
+          log: "true"
+          log-prefix: "RESEARCH-TO-TOA"
+          destination: "trusted-output-app"
+      {{- end }}
+    
+    # ========================================
+    # EGRESS TO: Data Sources (RDS, AppRDS, Redshift, S3)
+    # SOURCE: Values-driven configuration
+    # ========================================
+    {{- range $idx, $rule := .Values.researchEgressCidrs }}
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets:
+          - {{ .cidr }}
+        ports:
+          - {{ .port }}
+      {{- if $.Values.calicoNetworkPolicy.logging.enableResearchEgress }}
+      metadata:
+        annotations:
+          log: "true"
+          log-prefix: "RESEARCH-DATA-{{ $idx }}"
+          destination-cidr: "{{ .cidr }}"
+          destination-port: "{{ .port }}"
+      {{- end }}
+    {{- end }}
+{{- end }}

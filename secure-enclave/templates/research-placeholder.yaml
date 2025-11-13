@@ -1,0 +1,177 @@
+{{- if .Values.audit.placeholders.research }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.researchContainer.placeholderName }}
+  namespace: {{ .Values.researchNamespace }}
+  labels:
+    {{- include "secure-enclave.labels" . | nindent 4 }}
+    app.kubernetes.io/component: research
+spec:
+  replicas: {{ .Values.researchContainer.replicas | default 2 }}
+  selector:
+    matchLabels:
+      role: {{ .Values.researchContainer.podLabels.role | default "toa-access" }}
+      app.kubernetes.io/name: {{ .Values.researchContainer.name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.researchContainer.name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: research
+        role: {{ .Values.researchContainer.podLabels.role | default "toa-access" }}
+        environment: {{ .Values.researchContainer.podLabels.environment | default "dev" }}
+        team: {{ .Values.researchContainer.podLabels.team | default "platform" }}
+
+    spec:
+      automountServiceAccountToken: {{ .Values.researchContainer.automountServiceAccountToken | default .Values.automountServiceAccountToken | default false }}
+
+      # Image pull secrets
+      {{- with .Values.researchContainer.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range . }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
+
+      # Pod-level security context
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+
+      # Priority class
+      priorityClassName: {{ .Values.researchContainer.priorityClassName | default "system-cluster-critical" }}
+
+      # Termination grace period
+      terminationGracePeriodSeconds: {{ .Values.researchContainer.terminationGracePeriodSeconds | default 30 }}
+
+      volumes:
+        # EmptyDir for /tmp (R temp files, OS temp)
+        - name: tmp
+          emptyDir:
+            sizeLimit: {{ .Values.researchContainer.storage.emptyDir.tmpStorage.sizeLimit | default "10Gi" }}
+
+        # EmptyDir for /data/work (main working storage - STATELESS)
+        - name: work-storage
+          emptyDir:
+            sizeLimit: {{ .Values.researchContainer.storage.emptyDir.workStorage.sizeLimit | default "100Gi" }}
+
+        {{- if .Values.researchContainer.storage.memberEfs.enabled }}
+        # Member-provided EFS dataset (static NFS mount)
+        - name: member-data
+          nfs:
+            server: {{ .Values.researchContainer.storage.memberEfs.fileSystemId }}.efs.{{ .Values.researchContainer.storage.memberEfs.region }}.amazonaws.com
+            path: {{ .Values.researchContainer.storage.memberEfs.path }}
+            readOnly: {{ .Values.researchContainer.storage.memberEfs.readOnly }}
+        {{- end }}
+
+      # Topology spread constraints
+      {{- if .Values.topologySpread.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: {{ .Values.topologySpread.topologyKey | default "topology.kubernetes.io/zone" }}
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              role: {{ .Values.researchContainer.podLabels.role | default "toa-access" }}
+              app.kubernetes.io/name: {{ .Values.researchContainer.name }}
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- end }}
+
+      # Node selector
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      # Tolerations
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      # Anti-affinity
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  role: {{ .Values.researchContainer.podLabels.role | default "toa-access" }}
+                  app.kubernetes.io/name: {{ .Values.researchContainer.name }}
+                  app.kubernetes.io/instance: {{ .Release.Name }}
+
+      containers:
+        - name: {{ .Values.researchContainer.placeholderContainerName }}
+          # Image with digest support
+          {{- if .Values.researchContainer.image.digest }}
+          image: {{ .Values.researchContainer.image.registry }}/{{ .Values.researchContainer.image.repository }}@{{ .Values.researchContainer.image.digest }}
+          {{- else }}
+          image: {{ .Values.researchContainer.image.registry }}/{{ .Values.researchContainer.image.repository }}:{{ .Values.researchContainer.image.tag }}
+          {{- end }}
+          imagePullPolicy: {{ .Values.researchContainer.image.pullPolicy | default .Values.image.pullPolicy | default "Always" }}
+
+          # Command
+          {{- with .Values.researchContainer.command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          # Container-level security context
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+
+          # Resources (research-specific)
+          resources:
+            {{- toYaml .Values.researchContainer.resources | nindent 12 }}
+
+          # Volume mounts
+          volumeMounts:
+            # /tmp for R temporary files
+            - name: tmp
+              mountPath: {{ .Values.researchContainer.storage.emptyDir.tmpStorage.mountPath | default "/tmp" }}
+
+            # /data/work for main working storage (EmptyDir - stateless)
+            - name: work-storage
+              mountPath: {{ .Values.researchContainer.storage.emptyDir.workStorage.mountPath | default "/data/work" }}
+
+            {{- if .Values.researchContainer.storage.memberEfs.enabled }}
+            # Member EFS dataset (read-only)
+            - name: member-data
+              mountPath: {{ .Values.researchContainer.storage.memberEfs.mountPath }}
+              readOnly: {{ .Values.researchContainer.storage.memberEfs.readOnly }}
+            {{- end }}
+
+          # Liveness probe
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "test -d /tmp"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
+
+          # Readiness probe
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "exit 0"
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+{{- end }}

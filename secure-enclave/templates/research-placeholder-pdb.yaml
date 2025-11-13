@@ -1,0 +1,13 @@
+{{- if .Values.audit.placeholders.research }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: research-placeholder-pdb
+  namespace: {{ .Values.researchNamespace }}
+spec:
+  maxUnavailable: 1
+  unhealthyPodEvictionPolicy: AlwaysAllow
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.researchContainer.name }}
+{{- end }}

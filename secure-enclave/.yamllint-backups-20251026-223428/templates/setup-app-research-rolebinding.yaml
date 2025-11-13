@@ -1,0 +1,19 @@
+{{- /*
+Binds the Role in the research namespace to the setup app's ServiceAccount
+that lives in the *admin/release* namespace.
+*/ -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.setupApp.name }}-research-launcher
+  namespace: {{ .Values.researchNamespace }}
+  labels:
+    {{- include "secure-enclave.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ printf "%s-research-pod-admin" .Values.setupApp.name }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ default (printf "%s-sa" .Values.setupApp.name) .Values.setupApp.serviceAccount.name }}
+    namespace: {{ .Values.adminNamespace | default "enclave-admin-ns" }}

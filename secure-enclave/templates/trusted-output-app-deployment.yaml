@@ -1,0 +1,246 @@
+{{- if .Values.trustedOutputApp.enabled | default true }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.trustedOutputApp.name }}
+  namespace: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
+  labels:
+    app: {{ .Values.trustedOutputApp.name }}
+    {{- include "secure-enclave.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.trustedOutputApp.hpa.enabled }}
+  replicas: {{ int (default 1 .Values.trustedOutputApp.replicas) }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.trustedOutputApp.name }}
+      app.kubernetes.io/name: {{ .Values.trustedOutputApp.name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.trustedOutputApp.name }}
+        app.kubernetes.io/name: {{ .Values.trustedOutputApp.name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with .Values.trustedOutputApp.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ default (printf "%s-sa" .Values.trustedOutputApp.name) .Values.trustedOutputApp.serviceAccount.name }}
+
+      {{- if and .Values.trustedOutputApp .Values.trustedOutputApp.serviceAccount (hasKey .Values.trustedOutputApp.serviceAccount "automountServiceAccountToken") }}
+      automountServiceAccountToken: {{ .Values.trustedOutputApp.serviceAccount.automountServiceAccountToken }}
+      {{- else if hasKey .Values "automountServiceAccountToken" }}
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      {{- else }}
+      automountServiceAccountToken: false
+      {{- end }}
+
+      {{- with (or .Values.trustedOutputApp.imagePullSecrets .Values.imagePullSecrets) }}
+      imagePullSecrets:
+        {{- range . }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
+
+      {{- $podSC := coalesce .Values.trustedOutputApp.podSecurityContext .Values.podSecurityContext }}
+      {{- with $podSC }}
+      securityContext:
+{{ toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- $hasVol := or (and .Values.emptyDir .Values.emptyDir.enabled .Values.emptyDir.mountPath) (and .Values.trustedOutputApp.persistence .Values.trustedOutputApp.persistence.enabled) (and .Values.volumes (gt (len .Values.volumes) 0)) -}}
+      {{- if $hasVol }}
+      volumes:
+        {{- if and .Values.emptyDir .Values.emptyDir.enabled .Values.emptyDir.mountPath }}
+        - name: worktmp
+          emptyDir:
+            {{- if .Values.emptyDir.sizeLimit }}
+            sizeLimit: {{ .Values.emptyDir.sizeLimit }}
+            {{- else }}
+            {}
+            {{- end }}
+        {{- end }}
+        {{- if and .Values.trustedOutputApp.persistence .Values.trustedOutputApp.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-pvc" .Values.trustedOutputApp.name) .Values.trustedOutputApp.persistence.existingClaim }}
+        {{- end }}
+        {{- with .Values.volumes }}
+{{ toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}
+
+      terminationGracePeriodSeconds: {{ .Values.trustedOutputApp.terminationGracePeriodSeconds | default 30 }}
+      {{- with .Values.trustedOutputApp.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - {{ .Values.trustedOutputApp.name }}
+      {{- if .Values.topologySpread.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: {{ .Values.topologySpread.topologyKey | default "topology.kubernetes.io/zone" | quote }}
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: {{ .Values.trustedOutputApp.name }}
+              app.kubernetes.io/name: {{ .Values.trustedOutputApp.name }}
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- end }}
+      containers:
+        - name: {{ .Values.trustedOutputApp.name }}
+          imagePullPolicy: {{ default (default "Always" .Values.image.pullPolicy) .Values.trustedOutputApp.image.pullPolicy }}
+          {{- $reg  := required "trustedOutputApp.image.registry is required" .Values.trustedOutputApp.image.registry -}}
+          {{- $repo := required "trustedOutputApp.image.repository is required" .Values.trustedOutputApp.image.repository -}}
+          {{- $tag  := .Values.trustedOutputApp.image.tag | default "" -}}
+          {{- $dig  := .Values.trustedOutputApp.image.digest | default "" -}}
+          {{- if and $tag $dig }}{{ fail "Provide either trustedOutputApp.image.tag OR trustedOutputApp.image.digest, not both" }}{{- end }}
+          {{- if $dig }}
+          image: {{ printf "%s/%s@%s" $reg $repo $dig | quote }}
+          {{- else }}
+          image: {{ printf "%s/%s:%s" $reg $repo (required "trustedOutputApp.image.tag must be set (or provide .image.digest)" $tag) | quote }}
+          {{- end }}
+          {{- $ctSC := coalesce .Values.trustedOutputApp.securityContext .Values.securityContext }}
+          {{- if and $ctSC (gt (len $ctSC) 0) }}
+          securityContext:
+{{- toYaml $ctSC | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: {{ .Values.trustedOutputApp.service.portName | default "http" }}
+              containerPort: {{ .Values.trustedOutputApp.service.targetPort }}  
+          {{- if .Values.trustedOutputApp.workingDir }}
+          workingDir: {{ .Values.trustedOutputApp.workingDir }}
+          {{- end }}
+          {{- if .Values.trustedOutputApp.command }}
+          command:
+            {{- range .Values.trustedOutputApp.command }}
+            - {{ . | quote }}
+            {{- end }}
+          {{- end }}
+
+          {{- if .Values.managementApp.endpoint.host }}
+          {{- $scheme := default "https" .Values.managementApp.endpoint.protocol -}}
+          {{- $port   := int (default 443 .Values.managementApp.endpoint.port) -}}
+          {{- $portPart := "" -}}
+          {{- if not (and (eq $scheme "https") (eq $port 443)) -}}
+          {{-   $portPart = printf ":%d" $port -}}
+          {{- end }}
+          env:
+            - name: MANAGEMENT_APP_BASE_URL
+              value: {{ printf "%s://%s%s" $scheme .Values.managementApp.endpoint.host $portPart | quote }}
+          {{- end }}
+
+          envFrom:
+            # 1. Management App private key
+            - secretRef:
+                name: {{ default "management-app-secret" .Values.managementApp.externalSecret.secretName | quote }}
+            # 2. Internal auth credentials (basicAuth for TOA/Setup communication)
+            {{- if .Values.internalAuth.enabled }}
+            - secretRef:
+                name: {{ default "internal-auth-credentials" .Values.internalAuth.k8sSecretName | quote }}
+            {{- end }}
+            # 3. Non-sensitive configuration
+            {{- if and .Values.trustedOutputApp.config.enabled .Values.trustedOutputApp.config.name }}
+            - configMapRef:
+                name: {{ .Values.trustedOutputApp.config.name | quote }}
+            {{- end }}
+
+          # Probes: global, with auth header injection
+          {{- if .Values.readinessProbe }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.httpGet.path }}
+              port: {{ .Values.readinessProbe.httpGet.port | default "http" }}
+              {{- if .Values.probeAuthHeader }}
+              httpHeaders:
+                - name: Authorization
+                  value: {{ .Values.probeAuthHeader | quote }}
+              {{- end }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          {{- end }}
+
+          {{- if .Values.livenessProbe }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.httpGet.path }}
+              port: {{ .Values.livenessProbe.httpGet.port | default "http" }}
+              {{- if .Values.probeAuthHeader }}
+              httpHeaders:
+                - name: Authorization
+                  value: {{ .Values.probeAuthHeader | quote }}
+              {{- end }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          {{- end }}
+
+          {{- if .Values.startupProbe }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.startupProbe.httpGet.path }}
+              port: {{ .Values.startupProbe.httpGet.port | default "http" }}
+              {{- if .Values.probeAuthHeader }}
+              httpHeaders:
+                - name: Authorization
+                  value: {{ .Values.probeAuthHeader | quote }}
+              {{- end }}
+            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+            initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+          {{- end }}
+
+          {{- $res := coalesce .Values.trustedOutputApp.resources .Values.resources -}}
+          {{- with $res }}
+          resources:
+{{ toYaml . | nindent 12 }}
+          {{- end }}
+
+          volumeMounts:
+            {{- if and .Values.emptyDir.enabled .Values.emptyDir.mountPath }}
+            - name: worktmp
+              mountPath: {{ .Values.emptyDir.mountPath }}
+            {{- end }}
+            {{- if .Values.trustedOutputApp.persistence.enabled }}
+            - name: data
+              mountPath: {{ .Values.trustedOutputApp.persistence.mountPath | default "/var/lib/toa" }}
+            {{- end }}
+            {{- with (or .Values.trustedOutputApp.volumeMounts .Values.volumeMounts) }}
+{{ toYaml . | nindent 12 }}
+            {{- end }}
+
+{{- end }}

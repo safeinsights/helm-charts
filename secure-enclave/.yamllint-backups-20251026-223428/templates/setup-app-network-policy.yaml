@@ -1,0 +1,64 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name:  {{ .Values.setupApp.name }}-network-policy
+  namespace: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ .Values.setupApp.name }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
+      ports:
+        - { protocol: TCP, port: {{ .Values.setupApp.service.port }} }
+  egress:
+    # DNS (CoreDNS)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+
+    # To Trusted Output App in admin namespace
+    {{- if and .Values.trustedOutputApp.enabled .Values.trustedOutputApp.service.enabled }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.adminNamespace | quote }}
+          podSelector:
+            matchLabels:
+              app: {{ .Values.trustedOutputApp.name }}
+      ports:
+        - { protocol: {{ .Values.trustedOutputApp.service.protocol | default "TCP" }}, port: {{ .Values.trustedOutputApp.service.port }} }
+    {{- end }}
+
+    # To Management App via NAT (IP allow-list from values)
+    {{- with .Values.managementApp.networkPolicy.egressCidrs }}
+    {{- range . }}
+    - to:
+        - ipBlock: { cidr: {{ .cidr | quote }} }
+      ports:
+        - { protocol: TCP, port: {{ $.Values.managementApp.endpoint.port | default 443 }} }
+    {{- end }}
+    {{- end }}
+
+    # Optional: EKS API if enabled AND CIDR is defined
+    {{- if and .Values.setupApp.networkPolicy.allowK8sApiEgress .Values.setupApp.networkPolicy.k8sApiCidr }}
+    - to:
+        - ipBlock: { cidr: {{ .Values.setupApp.networkPolicy.k8sApiCidr | quote }} }
+      ports:
+        - { protocol: TCP, port: 443 }
+    {{- end }}
+{{- end }}

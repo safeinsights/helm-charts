@@ -1,0 +1,47 @@
+{{- if .Values.setupApp.config.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.setupApp.config.name }}
+  namespace: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
+  labels:
+    {{- include "secure-enclave.labels" . | nindent 4 }}
+data:
+  # Kubernetes API configuration
+  {{- with .Values.setupApp.config.data.K8S_API_SERVER }}
+  K8S_API_SERVER: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.setupApp.config.data.K8S_SERVICE_ACCOUNT_PATH }}
+  K8S_SERVICE_ACCOUNT_PATH: {{ . | quote }}
+  {{- end }}
+
+  # Management App API URL (with smart port handling)
+  {{- if .Values.managementApp.endpoint.host }}
+  {{- $scheme := default "https" .Values.managementApp.endpoint.protocol -}}
+  {{- $port   := int (default 443 .Values.managementApp.endpoint.port) -}}
+  {{- $portPart := "" -}}
+  {{- if not (and (eq $scheme "https") (eq $port 443)) -}}
+  {{-   if not (and (eq $scheme "http") (eq $port 80)) -}}
+  {{-     $portPart = printf ":%d" $port -}}
+  {{-   end -}}
+  {{- end }}
+  MGMT_APP_API_URL: {{ printf "%s://%s%s" $scheme .Values.managementApp.endpoint.host $portPart | quote }}
+  {{- end }}
+
+  # Trusted Output App configuration
+  {{- with .Values.setupApp.config.data.TOA_API_URL }}
+  TOA_API_URL: {{ . | quote }}
+  {{- end }}
+
+  # Polling configuration
+  {{- with .Values.setupApp.config.data.POLL_INTERVAL_MS }}
+  POLL_INTERVAL_MS: {{ . | quote }}
+  {{- end }}
+
+  # Include any additional config data from values
+  {{- range $key, $value := .Values.setupApp.config.data }}
+  {{- if not (or (eq $key "K8S_API_SERVER") (eq $key "K8S_SERVICE_ACCOUNT_PATH") (eq $key "TOA_API_URL") (eq $key "POLL_INTERVAL_MS")) }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  {{- end }}
+{{- end }}

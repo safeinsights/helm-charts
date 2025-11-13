@@ -1,0 +1,193 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: crd.projectcalico.org/v1
+kind: GlobalNetworkPolicy
+metadata:
+  name: global-infrastructure-allow-cloud
+  annotations:
+    description: "Infrastructure exceptions - reusable across any EKS cluster"
+spec:
+  # Infrastructure namespaces that need special connectivity
+  namespaceSelector: kubernetes.io/metadata.name in { "kube-system", "external-secrets", "tigera-operator", "calico-system", "platform" }
+  order: 2
+  types: [Ingress, Egress]
+  
+  ingress:
+    # ========================================
+    # K8s API → Webhooks (CRITICAL for upgrades)
+    # ========================================
+    - action: Allow
+      protocol: TCP
+      source:
+        nets: [{{ .Values.kubeSystem.controlPlaneCidr | quote }}]
+      destination:
+        namespaceSelector: kubernetes.io/metadata.name in { "kube-system", "external-secrets", "tigera-operator", "calico-system", "platform" }
+        ports:
+          - 443   # External Secrets webhook, metrics-server
+          - 4443  # CSI driver webhooks
+          - 9443  # Custom webhooks
+          - {{ .Values.nodePorts.kubelet }}  # Kubelet (10250)
+          {{- if .Values.infrastructure.externalSecrets.enabled }}
+          - {{ .Values.infrastructure.externalSecrets.webhookPort }}  # External Secrets webhook port
+          {{- end }}
+    
+    # ========================================
+    # Infrastructure inter-pod (all TCP)
+    # ========================================
+    - action: Allow
+      protocol: TCP
+      source:
+        namespaceSelector: kubernetes.io/metadata.name in { "kube-system", "external-secrets", "tigera-operator", "calico-system", "platform" }
+    
+    # ========================================
+    # All pods → CoreDNS (UDP - primary)
+    # ========================================
+    - action: Allow
+      protocol: UDP
+      destination:
+        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+        selector: k8s-app == "kube-dns"
+        ports:
+          - {{ .Values.kubeSystem.coreDns.dnsPort }}
+    
+    # ========================================
+    # All pods → CoreDNS (TCP - fallback)
+    # ========================================
+    - action: Allow
+      protocol: TCP
+      destination:
+        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+        selector: k8s-app == "kube-dns"
+        ports:
+          - {{ .Values.kubeSystem.coreDns.dnsTcpPort }}
+  
+  egress:
+    # ========================================
+    # DNS Resolution (UDP - primary)
+    # ========================================
+    - action: Allow
+      protocol: UDP
+      destination:
+        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+        selector: k8s-app == "kube-dns"
+        ports:
+          - {{ .Values.kubeSystem.coreDns.dnsPort }}
+    
+    # ========================================
+    # DNS Resolution (TCP - fallback)
+    # ========================================
+    - action: Allow
+      protocol: TCP
+      destination:
+        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+        selector: k8s-app == "kube-dns"
+        ports:
+          - {{ .Values.kubeSystem.coreDns.dnsTcpPort }}
+    
+    # ========================================
+    # K8s API - Service CIDR (ClusterIP)
+    # ========================================
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets: [{{ .Values.kubeSystem.serviceCidr | quote }}]
+        ports:
+          - {{ .Values.kubeSystem.apiServer.port }}
+          - 6443
+    
+    # ========================================
+    # K8s API - Control Plane CIDR
+    # ========================================
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets: [{{ .Values.kubeSystem.controlPlaneCidr | quote }}]
+        ports:
+          - {{ .Values.kubeSystem.apiServer.port }}
+          - 6443
+          - {{ .Values.nodePorts.kubelet }}
+    
+    # ========================================
+    # AWS IMDS (Instance Metadata Service)
+    # ========================================
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets: [{{ printf "%s/32" .Values.awsAddresses.imds.ip | quote }}]
+        ports:
+          - {{ .Values.awsAddresses.imds.port }}
+    
+    # ========================================
+    # EKS Pod Identity (EKS 1.24+)
+    # ========================================
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets: [{{ printf "%s/32" .Values.awsAddresses.podIdentity.ip | quote }}]
+        ports:
+          - {{ .Values.awsAddresses.podIdentity.port }}
+    
+    # ========================================
+    # VPC Endpoints (Secrets Manager, EC2, EFS, S3)
+    # ========================================
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets: [{{ .Values.kubeSystem.vpcCidr | quote }}]
+        ports:
+          - 443   # HTTPS (VPC endpoints)
+          - 2049  # NFS (EFS mounts)
+    
+    # ========================================
+    # AWS Time Sync Service
+    # ========================================
+    - action: Allow
+      protocol: UDP
+      destination:
+        nets: [{{ printf "%s/32" .Values.awsAddresses.timeSync.ip | quote }}]
+        ports:
+          - {{ .Values.awsAddresses.timeSync.port }}
+    
+    # ========================================
+    # Public NTP (fallback)
+    # ========================================
+    - action: Allow
+      protocol: UDP
+      destination:
+        notNets: ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+        ports:
+          - {{ .Values.awsAddresses.timeSync.port }}
+    
+    # ========================================
+    # Calico Node (metrics + BGP)
+    # ========================================
+    {{- if .Values.infrastructure.calico }}
+    - action: Allow
+      protocol: TCP
+      destination:
+        selector: k8s-app == "calico-node"
+        ports:
+          - {{ .Values.infrastructure.calico.nodeMetricsPort }}
+          - {{ .Values.infrastructure.calico.bgpPort }}
+    {{- end }}
+    
+    # ========================================
+    # Calico Typha (policy sync)
+    # ========================================
+    {{- if .Values.infrastructure.calico }}
+    - action: Allow
+      protocol: TCP
+      destination:
+        selector: k8s-app == "calico-typha"
+        ports:
+          - {{ .Values.infrastructure.calico.typhaPort }}
+    {{- end }}
+    
+    # ========================================
+    # Infrastructure inter-pod (all TCP)
+    # ========================================
+    - action: Allow
+      protocol: TCP
+      destination:
+        namespaceSelector: kubernetes.io/metadata.name in { "kube-system", "external-secrets", "tigera-operator", "calico-system", "platform" }
+
+{{- end }}

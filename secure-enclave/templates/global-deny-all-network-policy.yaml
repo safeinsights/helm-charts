@@ -1,0 +1,28 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: crd.projectcalico.org/v1
+kind: GlobalNetworkPolicy
+metadata:
+  name: global-deny-all
+  annotations:
+    description: "Zero-trust baseline - deny all traffic"
+    version: "1.0.0"
+    architecture: "fail-closed"
+    security-posture: "deny-first"
+spec:
+  selector: all()
+  order: 100
+  types:
+    - Ingress
+    - Egress
+  
+  # ========================================
+  # INGRESS: Deny all (door closed)
+  # ========================================
+  ingress: []
+  
+  # ========================================
+  # EGRESS: Deny all (door closed)
+  # ========================================
+  egress: []
+
+{{- end }}

@@ -1,0 +1,76 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Values.trustedOutputApp.name }}-network-policy
+  namespace: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ .Values.trustedOutputApp.name }}
+  policyTypes:
+    - Ingress
+    - Egress
+
+  # Ingress: allow research NS (role=research) and setup-app in same NS
+  ingress:
+    - ports:
+        - protocol: {{ .Values.trustedOutputApp.service.protocol | default "TCP" }}
+          port: {{ .Values.trustedOutputApp.service.port | default 443 }}
+      from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.researchNamespace | default "enclave-research-ns" }}
+          podSelector:
+            matchLabels:
+              role: {{ .Values.researchContainer.name | default "research" }}
+        - podSelector:
+            matchLabels:
+              app: {{ .Values.setupApp.name }}
+              {{- with .Values.setupApp.toaAccessLabel }}
+              {{- if (default false .enabled) }}
+              {{ default "role" .key }}: {{ default "toa-access" .value | quote }}
+              {{- end }}
+              {{- end }}
+  # Egress: DNS + management endpoints
+  egress:
+    # DNS (CoreDNS in kube-system)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+
+    # To management endpoints; CIDRs if provided, else allow HTTPS anywhere
+    {{- if .Values.managementApp.networkPolicy.egressCidrs }}
+    {{- range .Values.managementApp.networkPolicy.egressCidrs }}
+    - to:
+        - ipBlock:
+            cidr: {{ .cidr | quote }}
+      ports:
+        - protocol: TCP
+          port: {{ .port | default $.Values.managementApp.endpoint.port | default 443 }}
+    {{- end }}
+    {{- else }}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: {{ .Values.managementApp.endpoint.port | default 443 }}
+    {{- end }}
+
+    # Optional: K8s API egress (only if both enabled AND CIDR defined)
+    {{- if and .Values.trustedOutputApp.networkPolicy.allowK8sApiEgress .Values.trustedOutputApp.networkPolicy.k8sApiCidr }}
+    - to:
+        - ipBlock:
+            cidr: {{ .Values.trustedOutputApp.networkPolicy.k8sApiCidr | quote }}
+      ports:
+        - { protocol: TCP, port: 443 }
+    {{- end }}
+{{- end }}

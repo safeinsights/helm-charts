@@ -1,0 +1,21 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- /*
+This template creates default-deny NetworkPolicies for all managed namespaces.
+It uses explicit namespace values instead of .Release.Namespace to ensure
+correct rendering during audit and deployment.
+*/ -}}
+
+{{- $adminNs := include "secure-enclave.adminNamespace" . -}}
+{{- $researchNs := include "secure-enclave.researchNamespace" . -}}
+
+{{- /* Create list of unique namespaces */ -}}
+{{- $namespaces := list $adminNs $researchNs | uniq -}}
+
+{{- /* Generate NetworkPolicy for each namespace */ -}}
+{{- range $index, $ns := $namespaces }}
+{{- if $index }}
+---
+{{- end }}
+{{- include "secure-enclave.defaultDenyNetworkPolicy" (dict "root" $ "namespace" $ns) }}
+{{- end }}
+{{- end }}

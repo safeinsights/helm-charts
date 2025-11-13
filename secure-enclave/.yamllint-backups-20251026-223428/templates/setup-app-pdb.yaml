@@ -1,0 +1,20 @@
+{{- if .Values.setupApp.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Values.setupApp.name }}-pdb
+  namespace: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
+  labels:
+    {{- include "secure-enclave.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.setupApp.name }}
+  {{- if hasKey .Values.setupApp.pdb "minAvailable" }}
+  minAvailable: {{ .Values.setupApp.pdb.minAvailable }}
+  {{- else if hasKey .Values.setupApp.pdb "maxUnavailable" }}
+  maxUnavailable: {{ .Values.setupApp.pdb.maxUnavailable }}
+  {{- else }}
+  maxUnavailable: 1
+  {{- end }}
+{{- end }}

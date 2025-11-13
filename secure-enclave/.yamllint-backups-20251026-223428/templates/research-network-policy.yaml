@@ -1,0 +1,50 @@
+#Egress only
+#DNS allowed
+#To TOA (submit results)
+#To RDS/App RDS/Redshift/S3 as provided in researchEgressCidrs
+#Selects pods labeled role: {{ .Values.researchContainer.name | default "research" }}
+
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Values.researchContainer.name }}-egress
+  namespace: {{ .Values.researchNamespace }}
+spec:
+  podSelector:
+    matchLabels:
+      role: {{ .Values.researchContainer.name | default "research" }}
+  policyTypes:
+    - Egress
+  egress:
+    # DNS (CoreDNS in kube-system)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+
+    # To Trusted Output App in admin namespace (submit results)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
+          podSelector:
+            matchLabels:
+              app: {{ .Values.trustedOutputApp.name }}
+      ports:
+        - { protocol: {{ .Values.trustedOutputApp.service.protocol | default "TCP" }}, port: {{ .Values.trustedOutputApp.service.port }} }
+
+    # Values-driven egress (RDS/AppRDS/Redshift/S3 via GW endpoint, etc.)
+    {{- range .Values.researchEgressCidrs }}
+    - to:
+        - ipBlock: { cidr: {{ .cidr | quote }} }
+      ports:
+        - { protocol: TCP, port: {{ .port }} }
+    {{- end }}
+{{- end }}

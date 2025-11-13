@@ -16,12 +16,12 @@ rules:
   resources: ["services","endpoints","configmaps","events"]
   verbs: ["get","list","watch"]
 
-# Read-only events via events.k8s.io
+# Read-only events via events.k8s.io (some clusters surface events there)
 - apiGroups: ["events.k8s.io"]
   resources: ["events"]
   verbs: ["get","list","watch"]
 
-# Read-only, name-scoped secrets
+# Read-only, name-scoped secrets (least privilege; omitted entirely if list empty)
 {{- with .Values.setupApp.rbac.allowedSecretNames }}
 - apiGroups: [""]
   resources: ["secrets"]
@@ -30,17 +30,14 @@ rules:
   verbs: ["get"]
 {{- end }}
 
-# Jobs: read-only by default; optionally allow create/delete
+# Jobs: read-only by default; optionally allow create/delete via values
 - apiGroups: ["batch"]
   resources: ["jobs"]
-  verbs:
-    - "get"
-    - "list"
-    - "watch"
-{{- if .Values.setupApp.rbac.allowJobCreate | default false }}
-    - "create"
-{{- end }}
-{{- if .Values.setupApp.rbac.allowJobDelete | default false }}
-    - "delete"
-{{- end }}
+  verbs: ["get","list","watch"]
+  {{- if .Values.setupApp.rbac.allowJobCreate | default false }}
+  - "create"
+  {{- end }}
+  {{- if .Values.setupApp.rbac.allowJobDelete | default false }}
+  - "delete"
+  {{- end }}
 

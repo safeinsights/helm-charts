@@ -1,0 +1,21 @@
+{{- if .Values.trustedOutputApp.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Values.trustedOutputApp.name }}-pdb
+  namespace: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
+  labels:
+    {{- include "secure-enclave.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.trustedOutputApp.name }}
+  {{- if hasKey .Values.trustedOutputApp.pdb "minAvailable" }}
+  minAvailable: {{ .Values.trustedOutputApp.pdb.minAvailable }}
+  {{- else if hasKey .Values.trustedOutputApp.pdb "maxUnavailable" }}
+  maxUnavailable: {{ .Values.trustedOutputApp.pdb.maxUnavailable }}
+  {{- else }}
+  maxUnavailable: 1
+  {{- end }}
+{{- end }}
+

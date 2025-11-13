@@ -1,102 +1,85 @@
-{{- if .Values.setupApp.enabled -}}
+{{- if .Values.setupApp.enabled | default true }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Values.setupApp.name }}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
   labels:
+    {{- include "secure-enclave.labelsFor" (dict "root" . "name" .Values.setupApp.name) | nindent 4 }}
     app: {{ .Values.setupApp.name }}
 spec:
-  replicas: 1
+  {{- if not .Values.hpa.enabled }}
+  replicas: {{ int (default (default 2 .Values.replicaCount) .Values.setupApp.replicas) }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: {{ .Values.setupApp.name }}
-      role: toa-access
   template:
     metadata:
       labels:
+        {{- include "secure-enclave.selectorLabelsFor" (dict "root" . "name" .Values.setupApp.name) | nindent 8 }}
         app: {{ .Values.setupApp.name }}
-        role: toa-access
-    spec:
-      serviceAccountName: {{ .Values.setupApp.name }}-sa
-      {{- if .Values.setupApp.image.imagePullSecret }}
-      imagePullSecrets:
-      - name: {{ .Values.setupApp.image.imagePullSecret  }}
+        {{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+        {{- end }}
+        {{- with .Values.setupApp.podLabels }}
+{{ toYaml . | indent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
       {{- end }}
-      containers:
-      - name: {{ .Values.setupApp.image.repository }}
-        imagePullPolicy: {{ .Values.setupApp.image.pullPolicy }}
-        image: {{ .Values.setupApp.image.registry }}/{{ .Values.setupApp.image.repository }}:{{ .Values.setupApp.image.tag }}  
-        ports:
-          - containerPort: {{ .Values.setupApp.service.targetPort  }}
-        {{- if .Values.setupApp.workingDir }}
-        workingDir: {{ .Values.setupApp.workingDir }}
+    spec:
+      serviceAccountName: {{ default (printf "%s-sa" .Values.setupApp.name) .Values.setupApp.serviceAccount.name }}
+     
+      {{- if and .Values.setupApp .Values.setupApp.serviceAccount (hasKey .Values.setupApp.serviceAccount "automountServiceAccountToken") }}
+      automountServiceAccountToken: {{ .Values.setupApp.serviceAccount.automountServiceAccountToken }}
+      {{- else if hasKey .Values "automountServiceAccountToken" }}
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      {{- else }}
+      automountServiceAccountToken: true
+      {{- end }}
+
+      {{- with (or .Values.setupApp.imagePullSecrets .Values.imagePullSecrets) }}
+      imagePullSecrets:
+        {{- range . }}
+        - name: {{ . }}
         {{- end }}
-        {{- if .Values.setupApp.command }}
-        command: 
-          {{- range .Values.setupApp.command }}
-            - {{ . | quote }}
-          {{- end }}
+      {{- end }}
+
+      # POD-level security context (values-first; omit if unset)
+      {{- $podSC := coalesce .Values.setupApp.podSecurityContext .Values.podSecurityContext }}
+      {{- with $podSC }}
+      securityContext:
+{{ toYaml . | nindent 8 }}
+      {{- end }}
+
+      volumes:
+        {{- if and .Values.emptyDir .Values.emptyDir.enabled }}
+        - name: worktmp
+          emptyDir:
+            {{- if .Values.emptyDir.sizeLimit }}
+            sizeLimit: {{ .Values.emptyDir.sizeLimit }}
+            {{- end }}
         {{- end }}
-        env:
-          - name: "DEPLOYMENT_ENVIRONMENT"
-            value: "KUBERNETES"
-        {{- if .Values.setupApp.environmentVariables.k8sApiServer }}
-          - name: "K8S_APISERVER"
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.setupApp.name }}-secret
-                key: k8s-api-server
+        {{- if .Values.setupApp.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-pvc" .Values.setupApp.name) .Values.setupApp.persistence.existingClaim }}
         {{- end }}
-        {{- if .Values.setupApp.environmentVariables.k8sServiceAccountPath }}
-          - name: "K8S_SERVICEACCOUNT_PATH"
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.setupApp.name }}-secret
-                key: k8s-service-account-path
+        {{- with .Values.volumes }}
+{{ toYaml . | nindent 8 }}
         {{- end }}
-         {{- if .Values.managementApp.memberId }}
-          - name: "MANAGEMENT_APP_MEMBER_ID"
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.setupApp.name }}-secret
-                key: mgmt-app-member-id
-        {{- end }}
-        {{- if .Values.managementApp.endpoint.host }}
-          - name: "MANAGEMENT_APP_BASE_URL"
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.setupApp.name }}-secret
-                key: mgmt-app-api-url
-        {{- end }}
-        {{- if .Values.setupApp.environmentVariables.pollIntervall }}
-          - name: "POLL_INTERVALL"
-            value: {{ .Values.setupApp.environmentVariables.pollIntervall | quote }}
-        {{- end }}
-          - name: "TOA_BASE_URL"
-        {{- if .Values.setupApp.environmentVariables.toaApiIUrl }}
-            value: {{ .Values.setupApp.environmentVariables.toaApiIUrl }}
-        {{-  else }}
-            value: http://{{ .Values.trustedOutputApp.name }}-svc:{{ .Values.trustedOutputApp.service.port }}
-        {{- end }}
-        {{- if .Values.trustedOutputApp.environmentVariables.httpBasicAuth }}
-          - name: "TOA_BASIC_AUTH"
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.setupApp.name }}-secret
-                key: http-basic-auth
-        {{- end }}
-        {{- if .Values.managementApp.privateKey }}
-          - name: "MANAGEMENT_APP_PRIVATE_KEY"
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.managementApp.privateKey.secretName }}
-                key: {{ .Values.managementApp.privateKey.key }}
-        {{- end }}
-        {{- if .Values.setupApp.environmentVariables.harborPullSecret }}
-          - name: "HARBOR_PULL_SECRET"
-            value: {{ .Values.setupApp.environmentVariables.harborPullSecret }}
-        {{- end }}
+
+      terminationGracePeriodSeconds: {{ .Values.setupApp.terminationGracePeriodSeconds | default 30 }}
+      {{- with .Values.setupApp.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -105,4 +88,159 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - {{ .Values.setupApp.name }}
+      {{- if .Values.topologySpread.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: {{ .Values.topologySpread.topologyKey | default "topology.kubernetes.io/zone" | quote }}
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: {{ .Values.setupApp.name }}
+              app.kubernetes.io/name: {{ .Values.setupApp.name | default "setup-app" }}
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- end }}
+      containers:
+        - name: {{ .Values.setupApp.name }}
+          imagePullPolicy: {{ default (default "Always" .Values.image.pullPolicy) .Values.setupApp.image.pullPolicy }}
+          # Image: require registry/repository; allow tag OR digest (not both)
+          {{- $reg  := required "setupApp.image.registry is required" .Values.setupApp.image.registry -}}
+          {{- $repo := required "setupApp.image.repository is required" .Values.setupApp.image.repository -}}
+          {{- $tag  := .Values.setupApp.image.tag | default "" -}}
+          {{- $dig  := .Values.setupApp.image.digest | default "" -}}
+          {{- if and $tag $dig }}{{ fail "Provide either setupApp.image.tag OR setupApp.image.digest, not both" }}{{- end }}
+          {{- if $dig }}
+          image: {{ printf "%s/%s@%s" $reg $repo $dig | quote }}
+          {{- else }}
+          image: {{ printf "%s/%s:%s" $reg $repo (required "setupApp.image.tag must be set (or provide .image.digest)" $tag) | quote }}
+          {{- end }}
+          # CONTAINER-level security context (emit only if non-empty)
+          {{- $ctSC := coalesce .Values.setupApp.securityContext .Values.securityContext }}
+          {{- if and $ctSC (gt (len $ctSC) 0) }}
+          securityContext:
+{{- toYaml $ctSC | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: {{ .Values.setupApp.service.portName | default "http" }}
+              containerPort: {{ .Values.setupApp.service.targetPort }}
+              protocol: TCP
+          # Optional working directory
+          {{- with .Values.setupApp.workingDir }}
+          workingDir: {{ . | quote }}
+          {{- end }}
+          # Command/Args (optional; app-first then global)
+
+
+
+          {{- $cmd := coalesce .Values.setupApp.command .Values.command -}}
+          {{- with $cmd }}
+          command:
+          {{- range . }}
+            - {{ . | quote }}
+          {{- end }}
+          {{- end }}
+
+          {{- if .Values.managementApp.endpoint.host }}
+          {{- $scheme := default "https" .Values.managementApp.endpoint.protocol -}}
+          {{- $port   := int (default 443 .Values.managementApp.endpoint.port) -}}
+          {{- $portPart := "" -}}
+          {{- if not (and (eq $scheme "https") (eq $port 443)) -}}
+          {{-   $portPart = printf ":%d" $port -}}
+          {{- end }}
+          env:
+            - name: MANAGEMENT_APP_BASE_URL
+              value: {{ printf "%s://%s%s" $scheme .Values.managementApp.endpoint.host $portPart | quote }}
+          {{- end }}
+
+          envFrom:
+            # 1. Management App private key
+            - secretRef:
+                name: {{ default "management-app-secret" .Values.managementApp.externalSecret.secretName | quote }}
+            # 2. Internal auth credentials (basicAuth for TOA/Setup communication)
+            {{- if .Values.internalAuth.enabled }}
+            - secretRef:
+                name: {{ default "internal-auth-credentials" .Values.internalAuth.k8sSecretName | quote }}
+            {{- end }}
+            # 3. Non-sensitive configuration
+            {{- if and .Values.setupApp.config.enabled .Values.setupApp.config.name }}
+            - configMapRef:
+                name: {{ .Values.setupApp.config.name | quote }}
+            {{- end }}
+
+          # --- BEGIN setup-app probes (exec) ---
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -lc
+                - |
+                  pgrep -f 'tsx .*src/scripts/poll\.ts|node .*poll\.js' >/dev/null
+            periodSeconds: {{ default 5  .Values.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ default 2  .Values.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ default 60 .Values.startupProbe.failureThreshold }}
+            {{- with .Values.startupProbe.initialDelaySeconds }}
+            initialDelaySeconds: {{ . }}
+            {{- end }}
+
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - |
+                  pgrep -f 'tsx .*src/scripts/poll\.ts|node .*poll\.js' >/dev/null
+            periodSeconds: {{ default 5 .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ default 2  .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ default 2  .Values.readinessProbe.failureThreshold }}
+            {{- with .Values.readinessProbe.initialDelaySeconds }}
+            initialDelaySeconds: {{ . }}
+            {{- end }}
+            {{- with .Values.readinessProbe.successThreshold }}
+            successThreshold: {{ . }}
+            {{- end }}
+
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -lc
+                - |
+                  pgrep -f 'tsx .*src/scripts/poll\.ts|node .*poll\.js' >/dev/null
+            periodSeconds: {{ default 15 .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ default 5  .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ default 3  .Values.livenessProbe.failureThreshold }}
+            {{- with .Values.livenessProbe.initialDelaySeconds }}
+            initialDelaySeconds: {{ . }}
+            {{- end }}
+          # --- END setup-app probes ---
+
+          # Resources: app → global
+          {{- $res := coalesce .Values.setupApp.resources .Values.resources -}}
+          {{- with $res }}
+          resources:
+{{ toYaml . | nindent 12 }}
+          {{- end }}
+
+          # Volume mounts
+          volumeMounts:
+            {{- if and .Values.emptyDir.enabled .Values.emptyDir.mountPath }}
+            - name: worktmp
+              mountPath: {{ .Values.emptyDir.mountPath }}
+            {{- end }}
+            {{- if .Values.setupApp.persistence.enabled }}
+            - name: data
+              mountPath: {{ .Values.setupApp.persistence.mountPath | default "/var/lib/setup-app" }}
+            {{- end }}
+            {{- with (or .Values.setupApp.volumeMounts .Values.volumeMounts) }}
+{{ toYaml . | nindent 12 }}
+            {{- end }}
 {{- end }}

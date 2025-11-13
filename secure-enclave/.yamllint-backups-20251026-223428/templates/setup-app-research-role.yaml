@@ -1,0 +1,47 @@
+{{- /*
+Grants the setup app permission to manage research pods in the *research* namespace.
+*/ -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Values.setupApp.name }}-research-launcher
+  namespace: {{ .Values.researchNamespace }}
+  labels:
+    {{- include "secure-enclave.labels" . | nindent 4 }}
+rules:
+# Research pod lifecycle
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["create","get","list","watch","delete"]
+
+# Optional: exec into research pods (disabled by default)
+{{- if .Values.setupApp.rbac.research.allowPodExec | default false }}
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create"]
+{{- end }}
+
+# Optional: read logs from research pods
+{{- if .Values.setupApp.rbac.research.readLogs | default false }}
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get","list","watch"]
+{{- end }}
+
+# Optional: watch events in research ns (both APIs)
+{{- if .Values.setupApp.rbac.research.watchEvents | default false }}
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["get","list","watch"]
+- apiGroups: ["events.k8s.io"]
+  resources: ["events"]
+  verbs: ["get","list","watch"]
+{{- end }}
+
+# Optional: create jobs in research ns (if you use Jobs instead of bare Pods)
+{{- if .Values.setupApp.rbac.research.jobs | default false }}
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["create","get","list","watch","delete"]
+{{- end }}
+

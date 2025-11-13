@@ -1,0 +1,30 @@
+{{- if .Values.bootstrapNamespaces }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
+  labels:
+    environment: {{ .Values.environment | default "prod" }}
+    team: {{ .Values.team | default "data" }}
+    pod-security.kubernetes.io/enforce: "restricted"
+    pod-security.kubernetes.io/audit: "restricted"
+    pod-security.kubernetes.io/warn: "restricted"
+    pod-security.kubernetes.io/enforce-version: "latest"
+    enclave.safeinsights.org/role: "admin"
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ required "values.researchNamespace is required when bootstrapNamespaces=true" .Values.researchNamespace }}
+  labels:
+    environment: {{ .Values.environment | default "prod" }}
+    team: {{ .Values.team | default "data" }}
+    pod-security.kubernetes.io/enforce: "restricted"
+    pod-security.kubernetes.io/audit: "restricted"
+    pod-security.kubernetes.io/warn: "restricted"
+    pod-security.kubernetes.io/enforce-version: "latest"
+    enclave.safeinsights.org/role: "research"
+
+{{- end }}
+

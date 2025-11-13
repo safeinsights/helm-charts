@@ -1,0 +1,84 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: crd.projectcalico.org/v1
+kind: GlobalNetworkPolicy
+metadata:
+  name: global-monitoring-access
+  annotations:
+    description: "Allow monitoring stack to access application namespaces"
+    version: "1.0.0"
+    purpose: "prometheus-scraping,alb-health-checks,kyverno-validation"
+spec:
+  {{- if .Values.monitoring.applicationNamespaces }}
+  namespaceSelector: kubernetes.io/metadata.name in { {{- range $i, $ns := .Values.monitoring.applicationNamespaces }}{{ if $i }}, {{ end }}"{{ $ns }}"{{- end }} }
+  {{- else }}
+  # Default: enclave namespaces
+  namespaceSelector: kubernetes.io/metadata.name in { "enclave-admin-ns", "enclave-research-ns" }
+  {{- end }}
+  
+  order: 3
+  
+  types:
+    - Ingress
+  
+  ingress:
+    # -------------------------------------------------------------------------
+    # Prometheus → Application Pods (Metrics Scraping)
+    # -------------------------------------------------------------------------
+    - action: Allow
+      protocol: TCP
+      source:
+        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+        selector: app.kubernetes.io/name == "prometheus"
+      destination:
+        ports:
+          - 8080    # Common metrics port
+          - 9090    # Alternative metrics port
+          - 10254   # Ingress controller metrics
+          - 10250
+          - {{ .Values.trustedOutputApp.service.port }}    # toa
+          - {{ .Values.trustedOutputApp.service.targetPort }}    # toa-svc
+          - {{ .Values.setupApp.service.targetPort }}    # setup-app
+          - {{ .Values.setupApp.service.port }}
+    
+    # -------------------------------------------------------------------------
+    # Node Exporter → All Nodes (DaemonSet Metrics) 
+    # -------------------------------------------------------------------------
+    - action: Allow
+      protocol: TCP
+      source:
+        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+        selector: app.kubernetes.io/name == "prometheus-node-exporter"
+      destination:
+        ports:
+          - 9100    # Node metrics
+    
+    # -------------------------------------------------------------------------
+    # Promtail → Application Pods (Log Collection) ⚠️ OPTIONAL
+    # -------------------------------------------------------------------------
+    - action: Allow
+      protocol: TCP
+      source:
+        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+        selector: app.kubernetes.io/name == "promtail"
+      # No specific destination ports needed for log collection
+    
+    # -------------------------------------------------------------------------
+    # ALB Health Checks → Application Pods
+    # -------------------------------------------------------------------------
+    - action: Allow
+      protocol: TCP
+      source:
+        nets: [{{ .Values.kubeSystem.vpcCidr | quote }}]
+      destination:
+        ports:
+          - 80      # HTTP
+          - 443     # HTTPS
+          - 3000    # Grafana (if exposed)
+          - {{ .Values.trustedOutputApp.service.port }}    # toa
+          - {{ .Values.trustedOutputApp.service.targetPort }}    # toa-svc
+          - {{ .Values.setupApp.service.targetPort }}    # setup-app
+          - {{ .Values.setupApp.service.port }}
+          - 8080    # Common app port
+      # Impact: ALB health checks succeed, traffic routed to healthy pods
+
+{{- end }}
