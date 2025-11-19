@@ -155,7 +155,7 @@ spec:
           {{-   $portPart = printf ":%d" $port -}}
           {{- end }}
           env:
-            - name: MANAGEMENT_APP_BASE_URL
+            - name: MANAGEMENT_APP_API_URL
               value: {{ printf "%s://%s%s" $scheme .Values.managementApp.endpoint.host $portPart | quote }}
           {{- end }}
 

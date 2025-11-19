@@ -1,0 +1,37 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: crd.projectcalico.org/v1
+kind: NetworkPolicy
+metadata:
+  name: research-container-egress
+  namespace: {{ .Values.adminNamespace | default "enclave-admin-ns" }}
+  annotations:
+    description: "TEMPORARY: Research containers in admin-ns (Setup App bug)"
+spec:
+  selector: role == "toa-access"
+  order: 10
+  types:
+    - Egress
+  egress:
+    # DNS
+    - action: Allow
+      protocol: UDP
+      destination:
+        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+        selector: k8s-app == "kube-dns"
+        ports:
+          - 53
+    - action: Allow
+      protocol: TCP
+      destination:
+        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+        selector: k8s-app == "kube-dns"
+        ports:
+          - 53
+    # To TOA
+    - action: Allow
+      protocol: TCP
+      destination:
+        selector: app == "{{ .Values.trustedOutputApp.name }}"
+        ports:
+          - {{ .Values.trustedOutputApp.service.targetPort | default 3002 }}
+{{- end }}
