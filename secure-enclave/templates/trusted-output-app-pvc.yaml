@@ -1,13 +1,14 @@
-{{- if .Values.trustedOutputApp.persistence.enabled -}}
+{{- if .Values.trustedOutputApp.persistence.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: {{ .Values.trustedOutputApp.name }}-pvc
   namespace: {{ .Release.Namespace }}
 spec:
-  accessModes: {{ .Values.trustedOutputApp.persistence.accessModes }}
+  accessModes:
+    {{- toYaml .Values.trustedOutputApp.persistence.accessModes | nindent 4 }}
   storageClassName: {{ .Values.trustedOutputApp.persistence.storageClassName }}
   resources:
     requests:
       storage: {{ .Values.trustedOutputApp.persistence.pvcSize }}
-      {{- end }}
+{{- end }}

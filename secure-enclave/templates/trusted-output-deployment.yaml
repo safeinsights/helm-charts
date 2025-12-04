@@ -16,6 +16,19 @@ spec:
       labels:
         app: {{ .Values.trustedOutputApp.name }}
     spec:
+      {{- if .Values.trustedOutputApp.image.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.trustedOutputApp.image.imagePullSecret  }}
+      {{- end }}
+      volumes:
+        {{- if .Values.trustedOutputApp.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-pvc" .Values.trustedOutputApp.name) .Values.trustedOutputApp.persistence.existingClaim }}
+        {{- end }}
+        {{- with .Values.volumes }}
+{{ toYaml . | nindent 8 }}
+        {{- end }}
       containers:
       - name: {{ .Values.trustedOutputApp.image.repository }}
         imagePullPolicy: {{ .Values.trustedOutputApp.image.pullPolicy }}
@@ -39,38 +52,25 @@ spec:
           {{- end }}
         {{- end}}
         env:
-        {{- if .Values.trustedOutputApp.environmentVariables.httpBasicAuth }}
           - name: "HTTP_BASIC_AUTH"
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.trustedOutputApp.name }}-secret
-                key: http-basic-auth
-        {{- end }}
+                name: enclave-secret
+                key: toa-basic-auth
         {{- if .Values.managementApp.memberId }}
           - name: "MANAGEMENT_APP_MEMBER_ID"
+            value: {{ .Values.managementApp.memberId }}
+        {{- end }}
+          - name: "MANAGEMENT_APP_BASE_URL"
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.trustedOutputApp.name }}-secret
-                key: mgmt-app-member-id
-        {{- end }}
-        {{- if .Values.managementApp.endpoint.host }}
-          - name: "MANAGEMENT_APP_API_URL"
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.trustedOutputApp.name }}-secret
-                key: mgmt-app-api-url
-        {{- end }}
-        {{- if .Values.managementApp.privateKey }}
+                name: enclave-secret
+                key: management-app-api-url
           - name: "MANAGEMENT_APP_PRIVATE_KEY"
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.managementApp.privateKey.secretName }}
-                key: {{ .Values.managementApp.privateKey.key }}
-        {{- end}}
-      {{- if .Values.trustedOutputApp.image.imagePullSecret }}
-      imagePullSecrets:
-      - name: {{ .Values.trustedOutputApp.image.imagePullSecret  }}
-      {{- end }}
+                name: enclave-secret
+                key: management-app-private-key
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -79,6 +79,9 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.podAffinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 
 {{- end }}
-

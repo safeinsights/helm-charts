@@ -54,7 +54,10 @@ aws:
 ##
 networkPolicy:
   ## @param networkPolicy.enabled this enables or  disables the network policy
-  enabled: false
+  enabled: true
+  logging: true
+  ## @param networkPolicy.installCalico this enables or disables automatic installation of Calico
+  installCalico: false
 
 ## @param managementApp this defines all the configurations related to the management app
 ##
@@ -64,24 +67,7 @@ managementApp:
   memberId:
   ## @param managementApp.endpoint this defines the endpoint where the management app is available.
   ##
-  endpoint:
-    ## @param managementApp.endpoint.protocol this defines the protocol used to access the management app
-    ##
-    protocol: https
-    ## @param managementApp.endpoint.host this defines the host where the management app is available
-    ## This value is required
-    host: app.safeinsights.org
-    ## @param managementApp.endpoint.port this defines the port where the management app is available
-    ##
-    port: 443
-  ## @param managementApp.privateKey this defines the private key of the member deploying the enclave
-  ##
-  privateKey:
-    ## @param managementApp.privateKey.secretName this defines the name of the secret containing the private key
-    secretName: management-app-secret
-    ## @param managementApp.privateKey.key this defines the key of the private key in the secret
-    key: private-key
-
+  endpoint: https://app.safeinsights.org
 ## @param setupApp this defines the setup app configuration
 ##
 setupApp:
@@ -138,7 +124,7 @@ setupApp:
     repository: setup-app
     ## @param setupApp.image.tag this defines the image tag
     ##
-    tag: 20250922-c171d87a
+    tag: 20251006-e1ccae88
     ## @param setupApp.image.pullPolicy this defines the image pull policy
     ##
     pullPolicy: Always
@@ -151,18 +137,9 @@ setupApp:
   ## @param setupApp.environmentVariables this defines the setup app environment variables
   ##
   environmentVariables:
-    ## @param setupApp.environmentVariables.k8sApiServer this defines the Kubernetes API endpoint
-    ##
-    k8sApiServer: https://kubernetes.default.svc.cluster.local
-    ## @param setupApp.environmentVariables.k8sServiceAccountPath this defines the setup app service account secret mounting path
-    ##
-    k8sServiceAccountPath: /var/run/secrets/kubernetes.io/serviceaccount
     ## @param setupApp.environmentVariables.harborPullSecret this configures the pull secret from harbor
     ##
     harborPullSecret: si-docker-config
-    ## @param setupApp.environmentVariables.toaApiIUrl this defines the trusted output app endpoint
-    ##
-    toaApiIUrl: http://toa-svc:5050
     ## @param setupApp.environmentVariables.pollIntervall this overrides the setup app polling interval
     ##
     pollIntervall: "60000"
@@ -227,12 +204,6 @@ trustedOutputApp:
   ## @param trustedOutputApp.command this defines the command to start the trusted output app container
   ##
   command: ["npm", "run", "start"]
-  ## @param trustedOutputApp.environmentVariables this defines the trusted outptu app environment variables
-  ##
-  environmentVariables:
-    ## @param setupApp.environmentVariables.httpBasicAuth this defines the basic authentication for the trusted output app connection
-    ##
-    httpBasicAuth: admin:admin
 ## @param researchContainer this defines the research container app configuration
 ##
 researchContainer:
@@ -251,33 +222,6 @@ podSecurityContext:
   {}
   # fsGroup: 2000
 
-securityContext:
-  {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
-
-# This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
-ingress:
-  enabled: false
-  className: ""
-  annotations:
-    {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
-  hosts:
-    - host: chart-example.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
-
 resources:
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
@@ -290,57 +234,8 @@ resources:
     cpu: 100m
     memory: 128Mi
 
-# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
-livenessProbe:
-  httpGet:
-    path: /
-    port: http
-readinessProbe:
-  httpGet:
-    path: /
-    port: http
-
-# This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
-
-# Additional volumes on the output Deployment definition.
-volumes: []
-# - name: foo
-#   secret:
-#     secretName: mysecret
-#     optional: false
-
-# Additional volumeMounts on the output Deployment definition.
-volumeMounts: []
-# - name: foo
-#   mountPath: "/etc/foo"
-#   readOnly: true
-
 nodeSelector:
   {}
-  # kubernetes.io/os: linux
-# -- Affinity rules for scheduling the pod. If an explicit label selector is not provided for pod affinity or pod anti-affinity one will be created from the pod selector labels.
-affinity:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: karpenter.sh/nodepool
-              operator: DoesNotExist
-  podAntiAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      - topologyKey: "kubernetes.io/hostname"
-# -- Topology spread constraints to increase the controller resilience by distributing pods across the cluster zones. If an explicit label selector is not provided one will be created from the pod selector labels.
-topologySpreadConstraints:
-  - maxSkew: 1
-    topologyKey: topology.kubernetes.io/zone
-    whenUnsatisfiable: DoNotSchedule
-# -- Tolerations to allow the pod to be scheduled to nodes with taints.
-tolerations:
-  - key: CriticalAddonsOnly
-    operator: Exists
+# This is for setting Kubernetes Pod Affinity rules.
+# For more information checkout: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+podAffinity: {}

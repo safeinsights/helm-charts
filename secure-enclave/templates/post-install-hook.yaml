@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ include "secure-enclave.fullname" . }}-post-install-hook"
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "3"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    metadata:
+      name: "{{ include "secure-enclave.fullname" . }}-post-install-hook"
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: connectivity-test
+        image: busybox:1.36
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - |
+          echo "Testing connectivity to google.com"
+          echo "Performing DNS lookup for google.com..."
+          nslookup google.com
+          echo "Testing ping to google.com..."
+          ping -c 3 google.com

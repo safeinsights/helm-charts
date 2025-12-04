@@ -1,0 +1,11 @@
+apiVersion: v2
+name: calico
+description: Kubernetes Networking with Calico
+type: application
+version: 3.31.1
+appVersion: v3.31.1
+dependencies:
+  - repository: https://docs.tigera.io/calico/charts
+    name: tigera-operator
+    version: v3.31.1
+    condition: "networkPolicy.enabled"
