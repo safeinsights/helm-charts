@@ -11,9 +11,19 @@ fail() {
 	exit 1
 }
 DOCKER_AUTH_FILE="$1"
-HARBOR_USERNAME=$(jq -r ".username" "$DOCKER_AUTH_FILE")
-HARBOR_PASSWORD=$(jq -r ".password" "$DOCKER_AUTH_FILE")
+if [[ ! -r "$DOCKER_AUTH_FILE" ]]; then
+  echo "Cannot read file: $DOCKER_AUTH_FILE" >&2
+  exit 1
+fi
+HARBOR_USERNAME=$(jq -r ".name" "$DOCKER_AUTH_FILE")
+HARBOR_PASSWORD=$(jq -r ".secret" "$DOCKER_AUTH_FILE")
 SERVER_ENDPOINT=$(jq -r ".serveraddress" "$DOCKER_AUTH_FILE")
+for var in HARBOR_USERNAME HARBOR_PASSWORD SERVER_ENDPOINT; do
+  if [[ -z "${!var:-}" || "${!var}" == "null"  ]]; then
+    echo "Error: $var is missing or empty" >&2
+    exit 1
+  fi
+done
 NAMESPACE="${NAMESPACE:-default}"
 K8S_SECRET="${K8S_SECRET:-si-docker-config}"
 SETUP_APP_SA="${SETUP_APP_SA:-setup-app-sa}"
