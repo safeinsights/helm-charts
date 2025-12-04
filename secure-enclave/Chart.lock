@@ -2,5 +2,5 @@ dependencies:
 - name: calico
   repository: file://../calico
   version: 3.31.1
-digest: sha256:fc072ae25897cbbdc5da5eff0cf4d8757148f5583e44fb60f01c39c64bcbac84
-generated: "2025-12-04T11:51:38.226198-05:00"
+digest: sha256:31e75c452b4c4db759dd8b38539b9fde0a6580e086ccf7a8b045501111156be4
+generated: "2025-12-04T12:49:04.96115-05:00"

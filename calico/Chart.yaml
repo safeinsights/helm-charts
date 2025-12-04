@@ -9,3 +9,6 @@ dependencies:
     name: tigera-operator
     version: v3.31.1
     condition: "networkPolicy.enabled"
+maintainers:
+  - name: SafeInsights
+    email: administrators@safeinsights.org
