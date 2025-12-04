@@ -68,7 +68,6 @@ The following parameters can be configured using a `values.yaml` file. For more 
 | networkPolicy.installCalico | bool | `false` | networkPolicy.installCalico this enables or disables automatic installation of Calico |
 | setupApp.command | list | `["npx","tsx","src/scripts/poll.ts"]` | Sets the command to start the setup app container |
 | setupApp.enabled | bool | `true` | Sets if the setup app should be deployed |
-| setupApp.environmentVariables | object | `{"harborPullSecret":"si-docker-config","pollIntervall":"60000"}` | Sets the setup app environment variables |
 | setupApp.environmentVariables.harborPullSecret | string | `"si-docker-config"` | setupApp.environmentVariables.harborPullSecret this configures the pull secret from harbor |
 | setupApp.environmentVariables.pollIntervall | string | `"60000"` | setupApp.environmentVariables.pollIntervall this overrides the setup app polling interval |
 | setupApp.image.pullPolicy | string | `"Always"` | Sets the image pull policy |
@@ -96,7 +95,6 @@ The following parameters can be configured using a `values.yaml` file. For more 
 | trustedOutputApp.persistence.enabled | bool | `false` | Sets if the persistence should be enabled during the deployment |
 | trustedOutputApp.persistence.pvcSize | string | `"1Gi"` | Sets the size set for the the persitence |
 | trustedOutputApp.persistence.storageClassName | string | `"aws-ebs"` | Sets the storageClassName used for the persitence |
-| trustedOutputApp.service | object | `{"port":5050,"protocol":"TCP","targetPort":3002,"type":"ClusterIP"}` | Sets the service on which the trusted output App will be accessible |
 | trustedOutputApp.service.port | int | `5050` | Sets the service external port |
 | trustedOutputApp.service.protocol | string | `"TCP"` | Sets the service protocol |
 | trustedOutputApp.service.targetPort | int | `3002` | Sets the container internal port that the service redirects to. |
