@@ -105,10 +105,6 @@ The following parameters can be configured using a `values.yaml` file. For more 
 
 ----------------------------------------------
 
-### General Parameters
-- **`resources.limits.cpu/memory`**: CPU and memory limits (defaults: 100m/128Mi)
-- **`resources.requests.cpu/memory`**: CPU and memory requests (defaults: 100m/128Mi)
-
 ### Deployment Configuration
 All the deployment configurations are available in [values.yaml](secure-enclave/values.yaml) and each property is documented. 
 
