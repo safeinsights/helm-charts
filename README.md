@@ -27,19 +27,14 @@ helm install secure-enclave secure-enclave/secure-enclave --values custom-values
 ```
 
 ## Pre Requirements
-Before deploying the helm chart, we first need to have a private/public key pair as well as credentials for the [image repository](https://harbor.safeinsights.org/)
+Before deploying the helm chart, we first need to have credentials from the [image repository](https://harbor.safeinsights.org/)
 
 ### Key Pair generation
-To generate the key pair, we can run: 
+The key pair generation is done during the deployment. To once the deployment is finished you can retrieve the public key by running the following command. 
 ```
-openssl genrsa -out privatekey.pem 4096 # This will generate the private key
-openssl rsa -in privatekey.pem -pubout > publickey.pub # This will generate the public key. 
-
+kubectl get secret enclave-secret -n $namespace -o json | jq -r '.data."management-app-public-key"' | base64 -d
 ```
-The content of the public key need to be added in the [Management app](https://app.safeinsights.org/). 
-We then need to create a secret in the namespace we  will deploy the helm. 
-`kubectl create secret generic management-app-secret --from-file=private-key=./privatekey.pem -n $namespace`
-
+The key/pair is only generated during the first installation and needs to be updated in the Management APP. If the namespace has been deleted or the chart has been deployed to a new namespace, then the public key needs to be retrieved and updated in the Management App. 
 
 Once we create the robot-account credentials in the [image repository](https://harbor.safeinsights.org/), we will need to login from the environment and create a secret with the docker authentication. 
 
