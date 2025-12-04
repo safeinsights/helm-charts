@@ -10,7 +10,7 @@ This repository provides Kubernetes manifests and Helm charts for deploying two 
 1. **Setup App**: The setup app is the part of the enclave that polls the Management App for new avalaible research studies to run in the enclave. Once some studies become available, The setup app pull the container image, and start the research container with the variable environments needed to communicate with the Trusted Output App.  
 There is some documentation on the Setup App architecture and how it runs in different enclave environments (AWS. KUBERNETES, DOCKER) available [here](https://github.com/safeinsights/setup-app#enclave-environments)
 
-1. **Trusted Output Application**: The Trusted Output App is used to validate the results sent by the research container before they are sent to the Management App.****
+1. **Trusted Output Application**: The Trusted Output App is used to validate the results sent by the research container before they are sent to the Management App.
 
 ## Installation
 
@@ -20,13 +20,19 @@ There is some documentation on the Setup App architecture and how it runs in dif
 
 ### Install Chart
 To install the chart, run:
-```bash
+``` bash
 helm repo add secure-enclave https://safeinsights.github.io/helm-charts
 helm repo update
 helm install secure-enclave secure-enclave/secure-enclave --values custom-values.yaml
 ```
 
-## Pre Requirements
+The basic configuration for the custom-values.yaml is:
+``` yaml
+managementApp:
+  memberId: Your member Id. This value is required.
+```
+
+## Pre Deployment Requirements
 Before deploying the helm chart, we first need to have credentials from the [image repository](https://harbor.safeinsights.org/)
 
 ### Key Pair generation
@@ -46,7 +52,7 @@ The credentials should be a json similar to this (eg: credentials.json).
     "serveraddress": "https://harbor.safeinsights.org"
 }
 ```
-We then run the following [script](./tools/harbor-login).
+We then run the following [script](./tools/harbor-login). 
 `NAMESPACE=$namespace ./tools/harbor-login credentials.json` 
 This will create a secret with the `si-docker-config` secret in the specified namespace. 
 
