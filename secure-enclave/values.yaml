@@ -6,215 +6,151 @@
 nameOverride: ""
 fullnameOverride: ""
 
-## @param aws this defines the values configured when deployed on AWS.
-##
+# -- This defines the values configured when deployed on AWS.
 aws:
-  ## @param aws.enabled this defines if AWS configurations are enabled.
-  ##
+  # -- Sets if AWS configurations are enabled.
   enabled: false
-  ## @param aws.storageClass this defines the storage class used for the deployment
-  ##
+  # -- Sets the storage class used for the deployment
   storageClass:
-    ## @param aws.storageClass.name this defines the name of the storage class
-    ##
-    name: aws-ebs-sc
-    ## @param aws.storageClass.provisioner this defines the storage class provisioner
-    ##
-    provisioner: ebs.csi.aws.com
-    ## @param aws.storageClass.volumeBindingMode this defines the storage class volume binding mode
-    ##
-    volumeBindingMode: WaitForFirstConsumer
-    ## @param aws.storageClass.parameters this defines the storage class parameters
-    ##
-    parameters:
-      ## @param aws.storageClass.parameters.csi.storage.k8s.io/fstype this defines the filesystem type for the storage class
-      ##
-      csi.storage.k8s.io/fstype: xfs
-      ## @param aws.storageClass.parameters.type this defines the type of the storage class
-      ##
-      type: io1
-      ## @param aws.storageClass.parameters.iopsPerGB this defines the IOPS per GB for the storage
-      ##
-      iopsPerGB: "50"
-      ## @param aws.storageClass.parameters.encrypted  this defines if the storage is encrypted
-      ##
-      encrypted: "true"
-    ## @params aws.storageClass.allowedTopologies this defines the allowed toplogies, for eg. the zone where the storage class will be created in.
-    ##
-    allowedTopologies:
+    # -- Sets the name of the storage class
+      name: aws-ebs-sc
+    # -- Sets the storage class provisioner
+      provisioner: ebs.csi.aws.com
+    # -- Sets the storage class volume binding mode
+      volumeBindingMode: WaitForFirstConsumer
+    # -- Sets the storage class parameters
+      parameters:
+      # -- Sets the filesystem type for the storage class
+          csi.storage.k8s.io/fstype: xfs
+      # -- Sets the type of the storage class
+          type: io1
+      # -- Sets the IOPS per GB for the storage
+          iopsPerGB: "50"
+      # -- Sets if the storage is encrypted
+          encrypted: "true"
+    # -- Sets the allowed toplogies, for eg. the zone where the storage class will be created in.
+      allowedTopologies:
       - matchLabelExpressions:
           - key: topology.ebs.csi.aws.com/zone
             values:
               - us-east-1
 
-## @param networkPolicy this defines if the network policy restrictions are enforced.
-## Few limitations:
-## FQDNs Egress restrictions
-## TODO. Enforce Ingress only to some pods
-##
+# -- Sets if the network policy restrictions are enforced.
 networkPolicy:
-  ## @param networkPolicy.enabled this enables or  disables the network policy
+  # -- networkPolicy.enabled this enables or  disables the network policy
   enabled: true
   logging: true
-  ## @param networkPolicy.installCalico this enables or disables automatic installation of Calico
+  # -- networkPolicy.installCalico this enables or disables automatic installation of Calico
   installCalico: false
 
-## @param managementApp this defines all the configurations related to the management app
-##
+# -- Sets all the configurations related to the management app
 managementApp:
-  ## @param managementApp.memberId this defines the id of the member deploying the enclave
-  ##
+  # -- Sets the id of the member deploying the enclave
   memberId:
-  ## @param managementApp.endpoint this defines the endpoint where the management app is available.
-  ##
+  # -- Sets the endpoint where the management app is available.
   endpoint: https://app.safeinsights.org
-## @param setupApp this defines the setup app configuration
-##
+# -- Sets the setup app configuration
 setupApp:
-  ## @param setupApp.enabled this defines if the setup app should be deployed
-  ##
+  # -- Sets if the setup app should be deployed
   enabled: true
-  ## @param setupApp.name this defines the name of the deployment and containers for the setup app
-  ##
+  # -- Sets the name of the deployment and containers for the setup app
   name: setup-app
-  ## @param setupApp.serviceAccount this defines the service account used by setup account to manage the research container and also access the Kubernetes API
-  ##
+  # -- Sets the service account used by setup account to manage the research container and also access the Kubernetes API
   serviceAccount:
     annotations:
       kubernetes.io/enforce-mountable-secrets: "true"
-  ## @param setupApp.persistence this defines the persistence configuration for the setup app.
-  ##
+  # -- Sets the persistence configuration for the setup app.
   persistence:
-    ## @param setupApp.persistence.enabled this defines if the persistence should be enabled during the deployment
-    ##
-    enabled: false
-    ## @param setupApp.persistence.storageClassName this defines the storageClassName used for the persitence
-    ##
-    storageClassName: aws-ebs-sc
-    ## @param setupApp.persistence.pvcSize this defines the size set for the the persitence
-    ##
-    pvcSize: 1Gi
-    ## @param setupApp.persistence.accessModes this defines the access modes used for the persitence
-    ##
-    accessModes:
+    # -- Sets if the persistence should be enabled during the deployment
+      enabled: false
+    # -- Sets the storageClassName used for the persitence
+      storageClassName: aws-ebs-sc
+    # -- Sets the size set for the the persitence
+      pvcSize: 1Gi
+    # -- Sets the access modes used for the persitence
+      accessModes:
       - ReadWriteOnce
-  ## @param setupApp.service this defines the service on which the setup App will be accessible
-  ##
+  # -- Sets the service on which the setup App will be accessible
   service:
-    ## @param setupApp.service.type this defines the service type
-    ##
-    type: ClusterIP
-    ## @param setupApp.service.protocol this defines the service protocol
-    ##
-    protocol: TCP
-    ## @param setupApp.service.port this defines the service external port
-    ##
-    port: 5051
-    ## @param setupApp.service.targetPort this defines the container internal port that the service redirects to.
-    ##
-    targetPort: 5051
-  ## @param setupApp.image this defines the image configuration for the setup app
-  ##
+    # -- Sets the service type
+      type: ClusterIP
+    # -- Sets the service protocol
+      protocol: TCP
+    # -- Sets the service external port
+      port: 5051
+    # -- Sets the container internal port that the service redirects to.
+      targetPort: 5051
+  # -- Sets the image configuration for the setup app
   image:
-    ## @param setupApp.image.registry this defines the image registry
-    ##
-    registry: harbor.safeinsights.org/safeinsights-public
-    ## @param setupApp.image.repository this defines the image repository
-    ##
-    repository: setup-app
-    ## @param setupApp.image.tag this defines the image tag
-    ##
-    tag: 20251006-e1ccae88
-    ## @param setupApp.image.pullPolicy this defines the image pull policy
-    ##
-    pullPolicy: Always
-  ## @param setupApp.workingDir this defines the working directory inside the setup app container
-  ##
+    # -- Sets the image registry
+      registry: harbor.safeinsights.org/safeinsights-public
+    # -- Sets the image repository
+      repository: setup-app
+    # -- Sets the image tag
+      tag: 20251006-e1ccae88
+    # -- Sets the image pull policy
+      pullPolicy: Always
+  # -- Sets the working directory inside the setup app container
   workingDir: /home/node/code
-  ## @param setupApp.command this defines the command to start the setup app container
-  ##
+  # -- Sets the command to start the setup app container
   command: ["npx", "tsx", "src/scripts/poll.ts"]
-  ## @param setupApp.environmentVariables this defines the setup app environment variables
-  ##
+  # -- Sets the setup app environment variables
   environmentVariables:
-    ## @param setupApp.environmentVariables.harborPullSecret this configures the pull secret from harbor
-    ##
-    harborPullSecret: si-docker-config
-    ## @param setupApp.environmentVariables.pollIntervall this overrides the setup app polling interval
-    ##
-    pollIntervall: "60000"
-## @param trustedOutputApp this defines the trusted output app configuration
-##
+    # -- setupApp.environmentVariables.harborPullSecret this configures the pull secret from harbor
+      harborPullSecret: si-docker-config
+    # -- setupApp.environmentVariables.pollIntervall this overrides the setup app polling interval
+      pollIntervall: "60000"
+# -- Sets the trusted output app configuration
 trustedOutputApp:
-  ## @param trustedOutputApp.enabled this defines if the trusted output app should be deployed
-  ##
+  # -- Sets if the trusted output app should be deployed
   enabled: true
-  ## @param trustedOutputApp.name this defines the name of the deployment and containers for the trusted output app
-  ##
+  # -- Sets the name of the deployment and containers for the trusted output app
   name: toa
-  ## @param trustedOutputApp.persistence this defines the persistence configuration for the trusted output app.
-  ##
+  # -- Sets the persistence configuration for the trusted output app.
   persistence:
-    ## @param trustedOutputApp.persistence.enabled this defines if the persistence should be enabled during the deployment
-    ##
-    enabled: false
-    ## @param trustedOutputApp.persistence.storageClassName this defines the storageClassName used for the persitence
-    ##
-    storageClassName: aws-ebs
-    ## @param trustedOutputApp.persistence.pvcSize this defines the size set for the the persitence
-    ##
-    pvcSize: 1Gi
-    ## @param trustedOutputApp.persistence.accessModes this defines the access modes used for the persitence
-    ##
-    accessModes:
+    # -- Sets if the persistence should be enabled during the deployment
+      enabled: false
+    # -- Sets the storageClassName used for the persitence
+      storageClassName: aws-ebs
+    # -- Sets the size set for the the persitence
+      pvcSize: 1Gi
+    # -- Sets the access modes used for the persitence
+      accessModes:
       - ReadWriteOnce
-  ## @param trustedOutputApp.service this defines the service on which the trusted output App will be accessible
-  ##
+  # -- Sets the service on which the trusted output App will be accessible
   service:
-    ## @param trustedOutputApp.service.type this defines the service type
-    ##
-    type: ClusterIP
-    ## @param trustedOutputApp.service.protocol this defines the service protocol
-    ##
-    protocol: TCP
-    ## @param trustedOutputApp.service.port this defines the service external port
-    ##
-    port: 5050
-    ## @param trustedOutputApp.service.targetPort this defines the container internal port that the service redirects to.
-    ##
-    targetPort: 3002
-  ## @param trustedOutputApp.image this defines the image configuration for the trusted output app
-  ##
+    # -- Sets the service type
+      type: ClusterIP
+    # -- Sets the service protocol
+      protocol: TCP
+    # -- Sets the service external port
+      port: 5050
+    # -- Sets the container internal port that the service redirects to.
+      targetPort: 3002
+  # -- Sets the image configuration for the trusted output app
   image:
-    ## @param trustedOutputApp.image.registry this defines the image registry
-    ##
-    registry: harbor.safeinsights.org/safeinsights-public
-    ## @param trustedOutputApp.image.repository this defines the image repository
-    ##
-    repository: trusted-output-app
-    ## @param trustedOutputApp.image.tag this defines the image tag
-    ##
-    tag: 20250728-a5d087fc
-    ## @param trustedOutputApp.image.pullPolicy this defines the image pull policy
-    ##
-    pullPolicy: Always
-  ## @param trustedOutputApp.workingDir this defines the working directory inside the setup app container
-  ##
+    # -- Sets the image registry
+      registry: harbor.safeinsights.org/safeinsights-public
+    # -- Sets the image repository
+      repository: trusted-output-app
+    # -- Sets the image tag
+      tag: 20250728-a5d087fc
+    # -- Sets the image pull policy
+      pullPolicy: Always
+  # -- Sets the working directory inside the setup app container
   workingDir: /home/node/app
-  ## @param trustedOutputApp.command this defines the command to start the trusted output app container
-  ##
+  # -- Sets the command to start the trusted output app container
   command: ["npm", "run", "start"]
-## @param researchContainer this defines the research container app configuration
+# -- Sets the research container app configuration
 ##
 researchContainer:
-  ## @param researchContainer.name this defines the name of the jobs and containers for the research
-  ##
+  # -- Sets the name of the jobs and containers for the research
   name: research
 
-# This is for setting Kubernetes Annotations to a Pod.
+# -- This is for setting Kubernetes Annotations to a Pod.
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
 podAnnotations: {}
-# This is for setting Kubernetes Labels to a Pod.
+# -- This is for setting Kubernetes Labels to a Pod.
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 podLabels: {}
 
