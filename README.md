@@ -150,8 +150,10 @@ All the deployment configurations are available in [values.yaml](secure-enclave/
 
 To uninstall the chart, please run:
 ```bash
-helm uninstall secure-enclave
+helm uninstall secure-enclave -n $namespace
 ```
+
+The uninstallation will keep the secret that was generated during the deployment.
 
 ### Development
 First we need to build the helm dependencies by running `helm dependency build ./secure-enclave` 
