@@ -39,6 +39,10 @@ jobs:
           if [[ -n "$changed" ]]; then
             echo "::set-output name=changed::true"
           fi
+      - name: Helm repo updates
+        run: |
+          helm repo add projectcalico https://docs.tigera.io/calico/charts
+          helm repo update
 
       - name: Run chart-testing (lint)
         run: ct lint --config ct-config.yaml
