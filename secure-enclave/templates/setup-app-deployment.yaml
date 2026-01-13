@@ -84,11 +84,6 @@ spec:
         {{- end }}
           - name: "TOA_BASE_URL"
             value: http://{{ .Values.trustedOutputApp.name }}-svc:{{ .Values.trustedOutputApp.service.port }}
-          - name: "TOA_BASIC_AUTH"
-            valueFrom:
-              secretKeyRef:
-                name: enclave-secret
-                key: toa-basic-auth
           - name: "MANAGEMENT_APP_PRIVATE_KEY"
             valueFrom:
               secretKeyRef:

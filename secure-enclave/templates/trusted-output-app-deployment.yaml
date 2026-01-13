@@ -52,11 +52,6 @@ spec:
           {{- end }}
         {{- end}}
         env:
-          - name: "HTTP_BASIC_AUTH"
-            valueFrom:
-              secretKeyRef:
-                name: enclave-secret
-                key: toa-basic-auth
         {{- if .Values.managementApp.memberId }}
           - name: "MANAGEMENT_APP_MEMBER_ID"
             value: {{ .Values.managementApp.memberId }}

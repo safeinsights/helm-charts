@@ -93,8 +93,6 @@ spec:
             SVC_RANGE=$(kubectl get servicecidrs -o wide | awk 'NR>1 {print $2}')
             PRIVATE_KEY=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096)
             PUBLIC_KEY=$(openssl rsa -pubout -in <(printf '%s' "$PRIVATE_KEY"))
-            TOA_USER=$(cat /dev/urandom | tr -dc 'A-Za-z' | head -c12)
-            TOA_PASSWORD=$(cat /dev/urandom | tr -dc 'A-Za-z' | head -c12)
             echo "Checking if secret already exists"
             if kubectl get secret enclave-secret > /dev/null 2>&1; then
               echo "Secret already exists, skipping creation"
@@ -103,7 +101,6 @@ spec:
               kubectl create secret generic enclave-secret \
                   --from-literal=management-app-private-key="$PRIVATE_KEY" \
                   --from-literal=management-app-public-key="$PUBLIC_KEY" \
-                  --from-literal=toa-basic-auth="$TOA_USER:$TOA_PASSWORD" \
                   --from-literal=management-app-api-url={{ .Values.managementApp.endpoint }} \
                   --from-literal=k8s-api-server="https://kubernetes.default.svc.cluster.local" \
                   --from-literal=k8s-service-account-path="/var/run/secrets/kubernetes.io/serviceaccount"

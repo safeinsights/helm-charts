@@ -87,7 +87,7 @@ setupApp:
     # -- Sets the image repository
       repository: setup-app
     # -- Sets the image tag
-      tag: 20251006-e1ccae88
+      tag: 20260107-3bd4ba00
     # -- Sets the image pull policy
       pullPolicy: Always
   # -- Sets the working directory inside the setup app container
@@ -134,7 +134,7 @@ trustedOutputApp:
     # -- Sets the image repository
       repository: trusted-output-app
     # -- Sets the image tag
-      tag: 20250728-a5d087fc
+      tag: 20260105-f24b3dd4
     # -- Sets the image pull policy
       pullPolicy: Always
   # -- Sets the working directory inside the setup app container

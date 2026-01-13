@@ -56,7 +56,7 @@ spec:
     # ========================================
     # EGRESS TO: Trusted Output App
     # ========================================
-    {{- if and .Values.trustedOutputApp.enabled .Values.trustedOutputApp.service.enabled }}
+    {{- if .Values.trustedOutputApp.enabled }}
     - action: Allow
       protocol: TCP
       destination:
