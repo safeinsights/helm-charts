@@ -10,7 +10,7 @@ This repository provides Kubernetes manifests and Helm charts for deploying two 
 1. **Setup App**: The setup app is the part of the enclave that polls the Management App for new avalaible research studies to run in the enclave. Once some studies become available, The setup app pull the container image, and start the research container with the variable environments needed to communicate with the Trusted Output App.  
 There is some documentation on the Setup App architecture and how it runs in different enclave environments (AWS. KUBERNETES, DOCKER) available [here](https://github.com/safeinsights/setup-app#enclave-environments)
 
-1. **Trusted Output Application**: The Trusted Output App is used to validate the results sent by the research container before they are sent to the Management App.****
+1. **Trusted Output Application**: The Trusted Output App is used to validate the results sent by the research container before they are sent to the Management App.
 
 ## Installation
 
@@ -20,145 +20,88 @@ There is some documentation on the Setup App architecture and how it runs in dif
 
 ### Install Chart
 To install the chart, run:
-```bash
+``` bash
 helm repo add secure-enclave https://safeinsights.github.io/helm-charts
 helm repo update
 helm install secure-enclave secure-enclave/secure-enclave --values custom-values.yaml
 ```
 
-## Pre Requirements
-Before deploying the helm chart, we first need to have a private/public key pair as well as credentials for the [image repository](https://harbor.safeinsights.org/)
+The basic configuration for the custom-values.yaml is:
+``` yaml
+managementApp:
+  memberId: Your member Id. This value is required.
+```
+
+## Pre Deployment Requirements
+Before deploying the helm chart, we first need to have credentials from the [image repository](https://harbor.safeinsights.org/)
 
 ### Key Pair generation
-To generate the key pair, we can run: 
+The key pair generation is done during the deployment. To once the deployment is finished you can retrieve the public key by running the following command. 
 ```
-openssl genrsa -out privatekey.pem 4096 # This will generate the private key
-openssl rsa -in privatekey.pem -pubout > publickey.pub # This will generate the public key. 
-
+kubectl get secret enclave-secret -n $namespace -o json | jq -r '.data."management-app-public-key"' | base64 -d
 ```
-The content of the public key need to be added in the [Management app](https://app.safeinsights.org/). 
-We then need to create a secret in the namespace we  will deploy the helm. 
-`kubectl create secret generic management-app-secret --from-file=private-key=./privatekey.pem -n $namespace`
-
+The key/pair is only generated during the first installation and needs to be updated in the Management APP. If the namespace has been deleted or the chart has been deployed to a new namespace, then the public key needs to be retrieved and updated in the Management App. 
 
 Once we create the robot-account credentials in the [image repository](https://harbor.safeinsights.org/), we will need to login from the environment and create a secret with the docker authentication. 
 
 The credentials should be a json similar to this (eg: credentials.json). 
 ``` json
 {
-    "username": "username",
-    "password": "password",
+    "name": "username",
+    "secret": "password",
     "serveraddress": "https://harbor.safeinsights.org"
 }
 ```
-We then run the following [script](./tools/harbor-login).
+We then run the following [script](./tools/harbor-login). 
 `NAMESPACE=$namespace ./tools/harbor-login credentials.json` 
 This will create a secret with the `si-docker-config` secret in the specified namespace. 
 
 ## Configuration
 
-The following parameters can be configured using a `values.yaml` file.
+The following parameters can be configured using a `values.yaml` file. For more details on the configuration, refers to the comments [here](./secure-enclave/values.yaml)
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| affinity | object | `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"karpenter.sh/nodepool","operator":"DoesNotExist"}]}]}},"podAntiAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"topologyKey":"kubernetes.io/hostname"}]}}` | Affinity rules for scheduling the pod. If an explicit label selector is not provided for pod affinity or pod anti-affinity one will be created from the pod selector labels. |
-| autoscaling.enabled | bool | `false` |  |
-| autoscaling.maxReplicas | int | `100` |  |
-| autoscaling.minReplicas | int | `1` |  |
-| autoscaling.targetCPUUtilizationPercentage | int | `80` |  |
-| aws.enabled | bool | `false` |  |
-| aws.storageClass.allowedTopologies[0].matchLabelExpressions[0].key | string | `"topology.ebs.csi.aws.com/zone"` |  |
-| aws.storageClass.allowedTopologies[0].matchLabelExpressions[0].values[0] | string | `"us-east-1"` |  |
-| aws.storageClass.name | string | `"aws-ebs-sc"` |  |
-| aws.storageClass.parameters."csi.storage.k8s.io/fstype" | string | `"xfs"` |  |
-| aws.storageClass.parameters.encrypted | string | `"true"` |  |
-| aws.storageClass.parameters.iopsPerGB | string | `"50"` |  |
-| aws.storageClass.parameters.type | string | `"io1"` |  |
-| aws.storageClass.provisioner | string | `"ebs.csi.aws.com"` |  |
-| aws.storageClass.volumeBindingMode | string | `"WaitForFirstConsumer"` |  |
-| fullnameOverride | string | `""` |  |
-| ingress.annotations | object | `{}` |  |
-| ingress.className | string | `""` |  |
-| ingress.enabled | bool | `false` |  |
-| ingress.hosts[0].host | string | `"chart-example.local"` |  |
-| ingress.hosts[0].paths[0].path | string | `"/"` |  |
-| ingress.hosts[0].paths[0].pathType | string | `"ImplementationSpecific"` |  |
-| ingress.tls | list | `[]` |  |
-| livenessProbe.httpGet.path | string | `"/"` |  |
-| livenessProbe.httpGet.port | string | `"http"` |  |
-| managementApp.endpoint.host | string | `"app.safeinsights.org"` |  |
-| managementApp.endpoint.port | int | `443` |  |
-| managementApp.endpoint.protocol | string | `"https"` |  |
-| managementApp.memberId | string | `nil` |  |
-| managementApp.privateKey.key | string | `"private-key"` |  |
-| managementApp.privateKey.secretName | string | `"management-app-secret"` |  |
-| nameOverride | string | `""` |  |
-| networkPolicy.enabled | bool | `false` |  |
-| nodeSelector | object | `{}` |  |
-| podAnnotations | object | `{}` |  |
-| podLabels | object | `{}` |  |
-| podSecurityContext | object | `{}` |  |
-| readinessProbe.httpGet.path | string | `"/"` |  |
-| readinessProbe.httpGet.port | string | `"http"` |  |
-| researchContainer.name | string | `"research"` |  |
-| resources.limits.cpu | string | `"100m"` |  |
-| resources.limits.memory | string | `"128Mi"` |  |
-| resources.requests.cpu | string | `"100m"` |  |
-| resources.requests.memory | string | `"128Mi"` |  |
-| securityContext | object | `{}` |  |
-| setupApp.command[0] | string | `"npx"` |  |
-| setupApp.command[1] | string | `"tsx"` |  |
-| setupApp.command[2] | string | `"src/scripts/poll.ts"` |  |
-| setupApp.enabled | bool | `true` |  |
-| setupApp.environmentVariables.harborPullSecret | string | `"si-docker-config"` |  |
-| setupApp.environmentVariables.k8sApiServer | string | `"https://kubernetes.default.svc.cluster.local"` |  |
-| setupApp.environmentVariables.k8sServiceAccountPath | string | `"/var/run/secrets/kubernetes.io/serviceaccount"` |  |
-| setupApp.environmentVariables.pollIntervall | string | `"60000"` |  |
-| setupApp.environmentVariables.toaApiIUrl | string | `"http://toa-svc:5050"` |  |
-| setupApp.image.pullPolicy | string | `"Always"` |  |
-| setupApp.image.registry | string | `"harbor.safeinsights.org/safeinsights-public"` |  |
-| setupApp.image.repository | string | `"setup-app"` |  |
-| setupApp.image.tag | string | `"20250828-5a509a54"` |  |
-| setupApp.name | string | `"setup-app"` |  |
-| setupApp.persistence.accessModes[0] | string | `"ReadWriteOnce"` |  |
-| setupApp.persistence.enabled | bool | `false` |  |
-| setupApp.persistence.pvcSize | string | `"1Gi"` |  |
-| setupApp.persistence.storageClassName | string | `"aws-ebs-sc"` |  |
-| setupApp.service.port | int | `5051` |  |
-| setupApp.service.protocol | string | `"TCP"` |  |
-| setupApp.service.targetPort | int | `5051` |  |
-| setupApp.service.type | string | `"ClusterIP"` |  |
-| setupApp.serviceAccount.annotations."kubernetes.io/enforce-mountable-secrets" | string | `"true"` |  |
-| setupApp.workingDir | string | `"/home/node/code"` |  |
-| tolerations | list | `[{"key":"CriticalAddonsOnly","operator":"Exists"}]` | Tolerations to allow the pod to be scheduled to nodes with taints. |
-| topologySpreadConstraints | list | `[{"maxSkew":1,"topologyKey":"topology.kubernetes.io/zone","whenUnsatisfiable":"DoNotSchedule"}]` | Topology spread constraints to increase the controller resilience by distributing pods across the cluster zones. If an explicit label selector is not provided one will be created from the pod selector labels. |
-| trustedOutputApp.command[0] | string | `"npm"` |  |
-| trustedOutputApp.command[1] | string | `"run"` |  |
-| trustedOutputApp.command[2] | string | `"start"` |  |
-| trustedOutputApp.enabled | bool | `true` |  |
-| trustedOutputApp.environmentVariables.httpBasicAuth | string | `"admin:admin"` |  |
-| trustedOutputApp.image.pullPolicy | string | `"Always"` |  |
-| trustedOutputApp.image.registry | string | `"harbor.safeinsights.org/safeinsights-public"` |  |
-| trustedOutputApp.image.repository | string | `"trusted-output-app"` |  |
-| trustedOutputApp.image.tag | string | `"20250728-a5d087fc"` |  |
-| trustedOutputApp.name | string | `"toa"` |  |
-| trustedOutputApp.persistence.accessModes[0] | string | `"ReadWriteOnce"` |  |
-| trustedOutputApp.persistence.enabled | bool | `false` |  |
-| trustedOutputApp.persistence.pvcSize | string | `"1Gi"` |  |
-| trustedOutputApp.persistence.storageClassName | string | `"aws-ebs"` |  |
-| trustedOutputApp.service.port | int | `5050` |  |
-| trustedOutputApp.service.protocol | string | `"TCP"` |  |
-| trustedOutputApp.service.targetPort | int | `3002` |  |
-| trustedOutputApp.service.type | string | `"ClusterIP"` |  |
-| trustedOutputApp.workingDir | string | `"/home/node/app"` |  |
-| volumeMounts | list | `[]` |  |
-| volumes | list | `[]` |  |
+| managementApp.endpoint | string | `"https://app.safeinsights.org"` | Sets the endpoint where the management app is available. |
+| managementApp.memberId | string | `nil` | Sets the id of the member deploying the enclave |
+| networkPolicy.enabled | bool | `true` | networkPolicy.enabled this enables or  disables the network policy |
+| networkPolicy.installCalico | bool | `false` | networkPolicy.installCalico this enables or disables automatic installation of Calico |
+| setupApp.command | list | `["npx","tsx","src/scripts/poll.ts"]` | Sets the command to start the setup app container |
+| setupApp.enabled | bool | `true` | Sets if the setup app should be deployed |
+| setupApp.environmentVariables.harborPullSecret | string | `"si-docker-config"` | setupApp.environmentVariables.harborPullSecret this configures the pull secret from harbor |
+| setupApp.environmentVariables.pollIntervall | string | `"60000"` | setupApp.environmentVariables.pollIntervall this overrides the setup app polling interval |
+| setupApp.image.pullPolicy | string | `"Always"` | Sets the image pull policy |
+| setupApp.image.registry | string | `"harbor.safeinsights.org/safeinsights-public"` | Sets the image registry |
+| setupApp.image.repository | string | `"setup-app"` | Sets the image repository |
+| setupApp.image.tag | string | `"20251006-e1ccae88"` | Sets the image tag |
+| setupApp.name | string | `"setup-app"` | Sets the name of the deployment and containers for the setup app |
+| setupApp.persistence.accessModes | list | `["ReadWriteOnce"]` | Sets the access modes used for the persitence |
+| setupApp.persistence.enabled | bool | `false` | Sets if the persistence should be enabled during the deployment |
+| setupApp.persistence.pvcSize | string | `"1Gi"` | Sets the size set for the the persitence |
+| setupApp.persistence.storageClassName | string | `"aws-ebs-sc"` | Sets the storageClassName used for the persitence |
+| setupApp.service.port | int | `5051` | Sets the service external port |
+| setupApp.service.protocol | string | `"TCP"` | Sets the service protocol |
+| setupApp.service.targetPort | int | `5051` | Sets the container internal port that the service redirects to. |
+| setupApp.service.type | string | `"ClusterIP"` | Sets the service type |
+| setupApp.workingDir | string | `"/home/node/code"` | Sets the working directory inside the setup app container |
+| trustedOutputApp.command | list | `["npm","run","start"]` | Sets the command to start the trusted output app container |
+| trustedOutputApp.enabled | bool | `true` | Sets if the trusted output app should be deployed |
+| trustedOutputApp.image.pullPolicy | string | `"Always"` | Sets the image pull policy |
+| trustedOutputApp.image.registry | string | `"harbor.safeinsights.org/safeinsights-public"` | Sets the image registry |
+| trustedOutputApp.image.repository | string | `"trusted-output-app"` | Sets the image repository |
+| trustedOutputApp.image.tag | string | `"20250728-a5d087fc"` | Sets the image tag |
+| trustedOutputApp.name | string | `"toa"` | Sets the name of the deployment and containers for the trusted output app |
+| trustedOutputApp.persistence.accessModes | list | `["ReadWriteOnce"]` | Sets the access modes used for the persitence |
+| trustedOutputApp.persistence.enabled | bool | `false` | Sets if the persistence should be enabled during the deployment |
+| trustedOutputApp.persistence.pvcSize | string | `"1Gi"` | Sets the size set for the the persitence |
+| trustedOutputApp.persistence.storageClassName | string | `"aws-ebs"` | Sets the storageClassName used for the persitence |
+| trustedOutputApp.service.port | int | `5050` | Sets the service external port |
+| trustedOutputApp.service.protocol | string | `"TCP"` | Sets the service protocol |
+| trustedOutputApp.service.targetPort | int | `3002` | Sets the container internal port that the service redirects to. |
+| trustedOutputApp.service.type | string | `"ClusterIP"` | Sets the service type |
+| trustedOutputApp.workingDir | string | `"/home/node/app"` | Sets the working directory inside the setup app container |
 
 ----------------------------------------------
-
-### General Parameters
-- **`resources.limits.cpu/memory`**: CPU and memory limits (defaults: 100m/128Mi)
-- **`resources.requests.cpu/memory`**: CPU and memory requests (defaults: 100m/128Mi)
 
 ### Deployment Configuration
 All the deployment configurations are available in [values.yaml](secure-enclave/values.yaml) and each property is documented. 
@@ -167,12 +110,10 @@ All the deployment configurations are available in [values.yaml](secure-enclave/
 
 To uninstall the chart, please run:
 ```bash
-helm uninstall secure-enclave
+helm uninstall secure-enclave -n $namespace
 ```
 
-## Notes
+The uninstallation will keep the secret that was generated during the deployment.
 
-1. Ensure your Kubernetes cluster has sufficient resources.
-2. All sensitive values should be stored in Kubernetes secrets.
-3. Proper networking and security policies should be implemented.
-4. For production use, please consider enabling TLS for ingress.
+### Development
+First we need to build the helm dependencies by running `helm dependency build ./secure-enclave` 

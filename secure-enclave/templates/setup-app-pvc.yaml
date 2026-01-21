@@ -1,4 +1,4 @@
-{{- if .Values.setupApp.persistence.enabled -}}
+{{- if .Values.setupApp.persistence.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -11,4 +11,3 @@ spec:
     requests:
       storage: {{ .Values.setupApp.persistence.pvcSize }}
 {{- end }}
-

@@ -60,3 +60,74 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Get VPC CIDR from ConfigMap
+*/}}
+{{- define "secure-enclave.svcCidr" -}}
+{{- $configMap := lookup "v1" "ConfigMap" .Release.Namespace "enclave-config" }}
+{{- if $configMap }}
+{{- $vpcCidr := index $configMap.data "cluster-ip" }}
+{{- $vpcCidr }}
+{{- else }}
+1.1.1.1/16
+{{- end }}
+{{- end }}
+
+{{/*
+Get allowed external endpoints from ConfigMap
+*/}}
+{{- define "secure-enclave.allowedExternalEndpoints" -}}
+{{- $configMap := lookup "v1" "ConfigMap" .Release.Namespace "enclave-config" }}
+{{- if $configMap }}
+{{- $endpoints := index $configMap.data "allowed-external-endpoints" }}
+{{- if $endpoints }}
+{{- $endpoints }}
+{{- else }}
+{{- end }}
+{{- else }}
+{{- end }}
+{{- end }}
+
+
+
+{{/*
+Convert comma separated string to array
+*/}}
+{{- define "secure-enclave.commaSepToStringArray" -}}
+{{- splitList "," . -}}
+{{- end }}
+
+{{/*
+Validate enclave configuration 
+*/}}
+{{- define "secure-enclave.validateConfiguration" -}}
+{{- if not .Values.managementApp }}
+{{- fail "managementApp section is required in values" }}
+{{- else if not .Values.managementApp.memberId }}
+{{- fail "managementApp.memberId is required and cannot be empty" }}
+{{- else if not .Values.managementApp.endpoint }}
+{{- fail "managementApp.endpoint is required and cannot be empty" }}
+{{- end }}
+{{- end }}
+
+{{/*
+Extract host from URL
+*/}}
+{{- define "secure-enclave.extractHostFromUrl" -}}
+{{- $url := . -}}
+{{- $host := regexReplaceAll "^(?:https?://)?([^/]+).*" $url "${1}" -}}
+{{- $host }}
+{{- end }}
+
+{{/*
+Check if calico-node daemonset exists in calico-system namespace
+*/}}
+{{- define "secure-enclave.hasCalicoNodeDaemonset" -}}
+{{- $daemonset := lookup "apps/v1" "DaemonSet" "calico-system" "calico-node" }}
+{{- if $daemonset }}
+{{- true }}
+{{- else }}
+{{- false }}
+{{- end }}
+{{- end }}

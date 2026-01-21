@@ -2,9 +2,9 @@
 apiVersion: crd.projectcalico.org/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ .Values.setupApp.name }}-network-policy
+  name: {{ .Values.trustedOutputApp.name }}-network-policy
   annotations:
-    description: "Setup app - orchestration and lifecycle management"
+    description: "Trusted Output App - result submission and approval"
     version: "3.0.0-self-contained"
     architecture: "self-contained-dns"
     compliance: "management-api-audit-enabled"
@@ -12,27 +12,38 @@ metadata:
     logging: "enabled"
     {{- end }}
 spec:
-  selector: app == "{{ .Values.setupApp.name }}"
+  selector: app == "{{ .Values.trustedOutputApp.name }}"
   order: 10
   types:
     - Ingress
     - Egress
   
+  # ========================================
+  # INGRESS: From admin namespace + research pods
+  # ========================================
   ingress:
-    {{- if .Values.setupApp.service.targetPort }}
+    # From admin namespace (setup-app, other TOA pods)
     - action: Allow
       protocol: TCP
       source:
         namespaceSelector: kubernetes.io/metadata.name in { "{{ .Release.Namespace }}" }
       destination:
         ports:
-          - {{ .Values.setupApp.service.targetPort }}
-    {{- end }}
+          - {{ .Values.trustedOutputApp.service.targetPort | default 3002 }}
+    
+    # From research namespace (toa-access pods only)
+    - action: Allow
+      protocol: TCP
+      source:
+        namespaceSelector: kubernetes.io/metadata.name in { "{{ .Release.Namespace }}" }
+        selector: role == "toa-access"
+      destination:
+        ports:
+          - {{ .Values.trustedOutputApp.service.targetPort | default 3002 }}
   
   egress:
     # ========================================
     # EXCEPTION 1: DNS Resolution (UDP - Primary)
-    # Setup app needs DNS for name resolution
     # ========================================
     - action: Allow
       protocol: UDP
@@ -54,51 +65,15 @@ spec:
           - 53
     
     # ========================================
-    # EGRESS TO: Trusted Output App
+    # EGRESS TO: TOA-to-TOA (service mesh)
     # ========================================
-    {{- if .Values.trustedOutputApp.enabled }}
     - action: Allow
       protocol: TCP
       destination:
-        namespaceSelector: kubernetes.io/metadata.name in { "{{ .Release.Namespace }}" }
         selector: app == "{{ .Values.trustedOutputApp.name }}"
         ports:
           - {{ .Values.trustedOutputApp.service.targetPort }}
-    {{- end }}
-    
-    # ========================================
-    # EGRESS TO: Kubernetes API endpoints  
-    # ========================================
-    - action: Allow
-      protocol: TCP
-      destination:
-        nets: [{{ include "secure-enclave.svcCidr" . | quote }}]
-        ports:
-          - 443
-      {{- if .Values.networkPolicy.logging }}
-      metadata:
-        annotations:
-          log: "true"
-          log-prefix: "SETUP-MGMT-API"
-          destination: "management-app"
-          destination-cidr: {{ include "secure-enclave.svcCidr" . | quote }}
-          compliance: "audit-required"
-      {{- end }}
-    
-    # ========================================
-    # EGRESS TO: Kubernetes API (if enabled)
-    # ========================================
-    {{- $svc := lookup "v1" "Service" "default" "kubernetes" -}}
-    {{- if $svc }}
-    - action: Allow
-      protocol: TCP
-      destination:
-        nets:
-          - {{ printf "%s/32" $svc.spec.clusterIP }}
-        ports:
-          - 443
-    {{- end }}
-    
+
     # ========================================
     # EGRESS TO: Allowed External Endpoints
     # ========================================
@@ -118,12 +93,12 @@ spec:
       metadata:
         annotations:
           log: "true"
-          log-prefix: "SETUP-MGMT-API"
+          log-prefix: "TOA-MGMT-API"
           destination: "management-app"
           destination-cidr: {{ printf "%s/32" $endpoint | quote }}
           compliance: "audit-required"
       {{- end }}
     {{- end }}
     {{- end }}
-    
+
 {{- end }}

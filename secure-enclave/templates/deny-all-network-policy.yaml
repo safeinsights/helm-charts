@@ -1,0 +1,17 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: crd.projectcalico.org/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all
+  annotations:
+    description: "Zero-trust baseline - deny all traffic"
+    version: "1.0.0"
+    architecture: "fail-closed"
+    security-posture: "deny-first"
+spec:
+  selector: all()
+  order: 1
+  types:
+    - Ingress
+    - Egress
+{{- end }}
