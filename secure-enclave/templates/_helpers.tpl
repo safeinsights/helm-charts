@@ -120,14 +120,3 @@ Extract host from URL
 {{- $host }}
 {{- end }}
 
-{{/*
-Check if calico-node daemonset exists in calico-system namespace
-*/}}
-{{- define "secure-enclave.hasCalicoNodeDaemonset" -}}
-{{- $daemonset := lookup "apps/v1" "DaemonSet" "calico-system" "calico-node" }}
-{{- if $daemonset }}
-{{- true }}
-{{- else }}
-{{- false }}
-{{- end }}
-{{- end }}
