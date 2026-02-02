@@ -13,23 +13,23 @@ aws:
   # -- Sets the storage class used for the deployment
   storageClass:
     # -- Sets the name of the storage class
-      name: aws-ebs-sc
+    name: aws-ebs-sc
     # -- Sets the storage class provisioner
-      provisioner: ebs.csi.aws.com
+    provisioner: ebs.csi.aws.com
     # -- Sets the storage class volume binding mode
-      volumeBindingMode: WaitForFirstConsumer
+    volumeBindingMode: WaitForFirstConsumer
     # -- Sets the storage class parameters
-      parameters:
+    parameters:
       # -- Sets the filesystem type for the storage class
-          csi.storage.k8s.io/fstype: xfs
+      csi.storage.k8s.io/fstype: xfs
       # -- Sets the type of the storage class
-          type: io1
+      type: io1
       # -- Sets the IOPS per GB for the storage
-          iopsPerGB: "50"
+      iopsPerGB: "50"
       # -- Sets if the storage is encrypted
-          encrypted: "true"
+      encrypted: "true"
     # -- Sets the allowed toplogies, for eg. the zone where the storage class will be created in.
-      allowedTopologies:
+    allowedTopologies:
       - matchLabelExpressions:
           - key: topology.ebs.csi.aws.com/zone
             values:
@@ -60,34 +60,34 @@ setupApp:
   # -- Sets the persistence configuration for the setup app.
   persistence:
     # -- Sets if the persistence should be enabled during the deployment
-      enabled: false
+    enabled: false
     # -- Sets the storageClassName used for the persitence
-      storageClassName: aws-ebs-sc
+    storageClassName: aws-ebs-sc
     # -- Sets the size set for the the persitence
-      pvcSize: 1Gi
+    pvcSize: 1Gi
     # -- Sets the access modes used for the persitence
-      accessModes:
+    accessModes:
       - ReadWriteOnce
   # -- Sets the service on which the setup App will be accessible
   service:
     # -- Sets the service type
-      type: ClusterIP
+    type: ClusterIP
     # -- Sets the service protocol
-      protocol: TCP
+    protocol: TCP
     # -- Sets the service external port
-      port: 5051
+    port: 5051
     # -- Sets the container internal port that the service redirects to.
-      targetPort: 5051
+    targetPort: 5051
   # -- Sets the image configuration for the setup app
   image:
     # -- Sets the image registry
-      registry: harbor.safeinsights.org/safeinsights-public
+    registry: harbor.safeinsights.org/safeinsights-public
     # -- Sets the image repository
-      repository: setup-app
+    repository: setup-app
     # -- Sets the image tag
-      tag: 20260107-3bd4ba00
+    tag: 20260107-3bd4ba00
     # -- Sets the image pull policy
-      pullPolicy: Always
+    pullPolicy: Always
   # -- Sets the working directory inside the setup app container
   workingDir: /home/node/code
   # -- Sets the command to start the setup app container
@@ -95,9 +95,9 @@ setupApp:
   # -- Sets the setup app environment variables
   environmentVariables:
     # -- setupApp.environmentVariables.harborPullSecret this configures the pull secret from harbor
-      harborPullSecret: si-docker-config
+    harborPullSecret: si-docker-config
     # -- setupApp.environmentVariables.pollIntervall this overrides the setup app polling interval
-      pollIntervall: "60000"
+    pollIntervall: "60000"
 # -- Sets the trusted output app configuration
 trustedOutputApp:
   # -- Sets if the trusted output app should be deployed
@@ -107,34 +107,34 @@ trustedOutputApp:
   # -- Sets the persistence configuration for the trusted output app.
   persistence:
     # -- Sets if the persistence should be enabled during the deployment
-      enabled: false
+    enabled: false
     # -- Sets the storageClassName used for the persitence
-      storageClassName: aws-ebs
+    storageClassName: aws-ebs
     # -- Sets the size set for the the persitence
-      pvcSize: 1Gi
+    pvcSize: 1Gi
     # -- Sets the access modes used for the persitence
-      accessModes:
+    accessModes:
       - ReadWriteOnce
   # -- Sets the service on which the trusted output App will be accessible
   service:
     # -- Sets the service type
-      type: ClusterIP
+    type: ClusterIP
     # -- Sets the service protocol
-      protocol: TCP
+    protocol: TCP
     # -- Sets the service external port
-      port: 5050
+    port: 5050
     # -- Sets the container internal port that the service redirects to.
-      targetPort: 3002
+    targetPort: 3002
   # -- Sets the image configuration for the trusted output app
   image:
     # -- Sets the image registry
-      registry: harbor.safeinsights.org/safeinsights-public
+    registry: harbor.safeinsights.org/safeinsights-public
     # -- Sets the image repository
-      repository: trusted-output-app
+    repository: trusted-output-app
     # -- Sets the image tag
-      tag: 20260105-f24b3dd4
+    tag: 20260105-f24b3dd4
     # -- Sets the image pull policy
-      pullPolicy: Always
+    pullPolicy: Always
   # -- Sets the working directory inside the setup app container
   workingDir: /home/node/app
   # -- Sets the command to start the trusted output app container
