@@ -55,14 +55,14 @@ jobs:
         uses: helm/kind-action@v1.12.0
         with:
           node_image: "kindest/node:${{ matrix.kubernetesVersion }}"
-          config: kind-config-calico.yaml
+          config: ${{ github.workspace }}/kind-config-calico.yaml
 
       - name: Create kind cluster (default CNI)
         if: matrix.calico == 'disabled'
         uses: helm/kind-action@v1.12.0
         with:
           node_image: "kindest/node:${{ matrix.kubernetesVersion }}"
-          config: kind-config.yaml
+          config: ${{ github.workspace }}/kind-config.yaml
 
       - name: Install Calico
         if: matrix.calico == 'enabled'
