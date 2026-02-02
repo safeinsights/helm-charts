@@ -105,6 +105,12 @@ jobs:
             --create-namespace \
             --set managementApp.memberId=test \
             --set networkPolicy.enabled=${{ matrix.calico == 'enabled' }} \
+            --set setupApp.image.registry=docker.io \
+            --set setupApp.image.repository=nginx \
+            --set setupApp.image.tag=latest \
+            --set trustedOutputApp.image.registry=docker.io \
+            --set trustedOutputApp.image.repository=nginx \
+            --set trustedOutputApp.image.tag=latest \
             --wait --timeout 5m --debug
 
       - name: Run helm tests
