@@ -78,8 +78,18 @@ jobs:
       - name: Wait for Calico to be ready
         if: matrix.calico == 'enabled'
         run: |
-          echo "Waiting for Calico to be ready..."
-          kubectl wait --for=condition=ready pod -l k8s-app=calico-node -n calico-system --timeout=120s
+          echo "Waiting for calico-system namespace to be created..."
+          until kubectl get namespace calico-system > /dev/null 2>&1; do
+            echo "Namespace calico-system not found yet, retrying..."
+            sleep 5
+          done
+          echo "Waiting for calico-node pods to exist..."
+          until kubectl get pods -l k8s-app=calico-node -n calico-system 2>/dev/null | grep -q calico-node; do
+            echo "calico-node pods not found yet, retrying..."
+            sleep 5
+          done
+          echo "Waiting for calico-node pods to be ready..."
+          kubectl wait --for=condition=ready pod -l k8s-app=calico-node -n calico-system --timeout=180s
           kubectl get daemonset calico-node -n calico-system
 
       - name: Verify cluster

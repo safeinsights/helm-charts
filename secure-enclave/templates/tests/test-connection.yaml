@@ -8,8 +8,18 @@ metadata:
     "helm.sh/hook": test
 spec:
   containers:
-    - name: wget
+    - name: test-toa
       image: busybox
-      command: ['wget']
-      args: ['{{ include "secure-enclave.fullname" . }}']
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          echo "Testing connection to Trusted Output App..."
+          wget --spider --timeout=5 {{ .Values.trustedOutputApp.name }}-svc:{{ .Values.trustedOutputApp.service.port }}
+    - name: test-setup-app
+      image: busybox
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          echo "Testing connection to Setup App..."
+          wget --spider --timeout=5 {{ .Values.setupApp.name }}-svc:{{ .Values.setupApp.service.port }}
   restartPolicy: Never
