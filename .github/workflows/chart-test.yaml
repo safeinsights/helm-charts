@@ -3,16 +3,13 @@ on:
   pull_request:
     paths:
     - "secure-enclave/**"
+    - "kind-config*.yaml"
+    - "ct-config.yaml"
+    - ".github/workflows/chart-test.yaml"
 
 jobs:
-  test:
-    strategy:
-      fail-fast: false
-      matrix:
-        # kubernetesVersion: [ "v1.24.15", "v1.28.0" ]
-        kubernetesVersion: ["v1.28.0" ]
+  lint:
     runs-on: ubuntu-latest
-    if: github.ref != 'refs/heads/master'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,33 +29,89 @@ jobs:
       - name: Set up chart-testing
         uses: helm/chart-testing-action@v2.7.0
 
-      - name: Run chart-testing (list-changed)
-        id: list-changed
-        run: |
-          changed=$(ct list-changed --config ct-config.yaml)
-          if [[ -n "$changed" ]]; then
-            echo "::set-output name=changed::true"
-          fi
-      - name: Helm repo updates
-        run: |
-          helm repo add projectcalico https://docs.tigera.io/calico/charts
-          helm repo update
-
       - name: Run chart-testing (lint)
         run: ct lint --config ct-config.yaml
 
-      # - name: Install kind
-      #   if: steps.list-changed.outputs.changed == 'true'
-      #   uses: helm/kind-action@v1.12.0
-      #   with:
-      #     node_image: "kindest/node:${{ matrix.kubernetesVersion }}"
-      #     config: kind-config.yaml
-      # - name: Verify kind
-      #   if: steps.list-changed.outputs.changed == 'true'
-      #   run: |
-      #     kubectl cluster-info
-      #     kubectl get nodes -o wide
-      #     kubectl get pods -n kube-system
+  install-test:
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        kubernetesVersion: ["v1.28.0"]
+        calico: ["enabled", "disabled"]
+    name: install-test (${{ matrix.calico }})
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # - name: Run chart-testing (install)
-      #   run: ct install --debug --config ct-config.yaml
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Create kind cluster (Calico CNI)
+        if: matrix.calico == 'enabled'
+        uses: helm/kind-action@v1.12.0
+        with:
+          node_image: "kindest/node:${{ matrix.kubernetesVersion }}"
+          config: kind-config-calico.yaml
+
+      - name: Create kind cluster (default CNI)
+        if: matrix.calico == 'disabled'
+        uses: helm/kind-action@v1.12.0
+        with:
+          node_image: "kindest/node:${{ matrix.kubernetesVersion }}"
+          config: kind-config.yaml
+
+      - name: Install Calico
+        if: matrix.calico == 'enabled'
+        run: |
+          helm repo add projectcalico https://docs.tigera.io/calico/charts
+          helm repo update
+          helm install calico projectcalico/tigera-operator \
+            --version v3.31.1 \
+            --namespace tigera-operator \
+            --create-namespace \
+            --wait --timeout 5m
+
+      - name: Wait for Calico to be ready
+        if: matrix.calico == 'enabled'
+        run: |
+          echo "Waiting for Calico to be ready..."
+          kubectl wait --for=condition=ready pod -l k8s-app=calico-node -n calico-system --timeout=120s
+          kubectl get daemonset calico-node -n calico-system
+
+      - name: Verify cluster
+        run: |
+          kubectl cluster-info
+          kubectl get nodes -o wide
+          kubectl get pods -A
+
+      - name: Install chart
+        run: |
+          helm install secure-enclave ./secure-enclave \
+            --namespace secure-enclave-test \
+            --create-namespace \
+            --set managementApp.memberId=test \
+            --set networkPolicy.enabled=${{ matrix.calico == 'enabled' }} \
+            --wait --timeout 5m --debug
+
+      - name: Run helm tests
+        run: helm test secure-enclave --namespace secure-enclave-test --timeout 3m
+
+      - name: Debug on failure
+        if: failure()
+        run: |
+          echo "=== Pod status ==="
+          kubectl get pods -A
+          echo "=== Events ==="
+          kubectl get events --namespace secure-enclave-test --sort-by='.lastTimestamp'
+          echo "=== Describe failed pods ==="
+          kubectl describe pods --namespace secure-enclave-test
+
+      - name: Cleanup
+        if: always()
+        run: |
+          helm uninstall secure-enclave --namespace secure-enclave-test --ignore-not-found
+          kubectl delete namespace secure-enclave-test --ignore-not-found
