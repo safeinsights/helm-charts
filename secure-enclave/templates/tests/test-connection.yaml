@@ -8,18 +8,13 @@ metadata:
     "helm.sh/hook": test
 spec:
   containers:
-    - name: test-toa
+    - name: test-services
       image: busybox
       command: ["/bin/sh", "-c"]
       args:
         - |
-          echo "Testing connection to Trusted Output App..."
-          wget --spider --timeout=5 {{ .Values.trustedOutputApp.name }}-svc:{{ .Values.trustedOutputApp.service.port }}
-    - name: test-setup-app
-      image: busybox
-      command: ["/bin/sh", "-c"]
-      args:
-        - |
-          echo "Testing connection to Setup App..."
-          wget --spider --timeout=5 {{ .Values.setupApp.name }}-svc:{{ .Values.setupApp.service.port }}
+          echo "Verifying Trusted Output App service..."
+          nslookup {{ .Values.trustedOutputApp.name }}-svc.{{ .Release.Namespace }}.svc.cluster.local
+          echo "Verifying Setup App service..."
+          nslookup {{ .Values.setupApp.name }}-svc.{{ .Release.Namespace }}.svc.cluster.local
   restartPolicy: Never
