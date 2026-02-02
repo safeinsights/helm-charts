@@ -17,6 +17,27 @@ There is some documentation on the Setup App architecture and how it runs in dif
 ### Prerequisites
 - Kubernetes cluster with proper authentication/authorization configured.
 - `Helm` installed on your system.
+- **Calico** network plugin installed on the cluster (see [Calico Installation](#calico-installation) below).
+
+### Calico Installation
+
+This chart uses [Calico](https://www.tigera.io/project-calico/) network policies (`crd.projectcalico.org/v1`) for zero-trust network enforcement. Calico must be installed on the cluster before deploying the secure-enclave chart.
+
+Install Calico using the official Tigera Operator Helm chart:
+
+```bash
+helm repo add projectcalico https://docs.tigera.io/calico/charts
+helm repo update
+helm install calico projectcalico/tigera-operator --version $VERSION --namespace tigera-operator --create-namespace
+```
+
+Verify the installation by checking that the `calico-node` DaemonSet is running:
+
+```bash
+kubectl get daemonset calico-node -n calico-system
+```
+
+All nodes should show as `READY` before proceeding with the secure-enclave chart installation. For more details, refer to the [official Calico documentation](https://docs.tigera.io/calico/latest/getting-started/kubernetes/helm).
 
 ### Install Chart
 To install the chart, run:
@@ -65,7 +86,6 @@ The following parameters can be configured using a `values.yaml` file. For more 
 | managementApp.endpoint | string | `"https://app.safeinsights.org"` | Sets the endpoint where the management app is available. |
 | managementApp.memberId | string | `nil` | Sets the id of the member deploying the enclave |
 | networkPolicy.enabled | bool | `true` | networkPolicy.enabled this enables or  disables the network policy |
-| networkPolicy.installCalico | bool | `false` | networkPolicy.installCalico this enables or disables automatic installation of Calico |
 | setupApp.command | list | `["npx","tsx","src/scripts/poll.ts"]` | Sets the command to start the setup app container |
 | setupApp.enabled | bool | `true` | Sets if the setup app should be deployed |
 | setupApp.environmentVariables.harborPullSecret | string | `"si-docker-config"` | setupApp.environmentVariables.harborPullSecret this configures the pull secret from harbor |

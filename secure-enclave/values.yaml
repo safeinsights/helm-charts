@@ -40,8 +40,6 @@ networkPolicy:
   # -- networkPolicy.enabled this enables or  disables the network policy
   enabled: true
   logging: true
-  # -- networkPolicy.installCalico this enables or disables automatic installation of Calico
-  installCalico: false
 
 # -- Sets all the configurations related to the management app
 managementApp:
