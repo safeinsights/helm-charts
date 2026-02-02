@@ -108,9 +108,13 @@ jobs:
             --set setupApp.image.registry=docker.io \
             --set setupApp.image.repository=nginx \
             --set setupApp.image.tag=latest \
+            --set setupApp.workingDir="" \
+            --set-json 'setupApp.command=null' \
             --set trustedOutputApp.image.registry=docker.io \
             --set trustedOutputApp.image.repository=nginx \
             --set trustedOutputApp.image.tag=latest \
+            --set trustedOutputApp.workingDir="" \
+            --set-json 'trustedOutputApp.command=null' \
             --wait --timeout 5m --debug
 
       - name: Run helm tests
