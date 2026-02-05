@@ -23,21 +23,97 @@ There is some documentation on the Setup App architecture and how it runs in dif
 
 This chart uses [Calico](https://www.tigera.io/project-calico/) network policies (`crd.projectcalico.org/v1`) for zero-trust network enforcement. Calico must be installed on the cluster before deploying the secure-enclave chart.
 
-Install Calico using the official Tigera Operator Helm chart:
+#### GKE Cluster Setup
+
+When using Google Kubernetes Engine (GKE), you must configure Calico to run as the full CNI (not just policy-only mode). This ensures the `calico-node` DaemonSet is deployed, which is required by this chart.
+
+**Step 1: Create GKE cluster without Dataplane V2**
+
+```bash
+gcloud container clusters create my-cluster \
+  --zone $ZONE \
+  --num-nodes $NUMBER_OF_NODES \
+  --no-enable-dataplane-v2
+
+# Get cluster credentials
+gcloud container clusters get-credentials my-cluster --zone $ZONE
+```
+
+**Step 2: Install Calico using the Tigera Operator**
 
 ```bash
 helm repo add projectcalico https://docs.tigera.io/calico/charts
 helm repo update
-helm install calico projectcalico/tigera-operator --version $VERSION --namespace tigera-operator --create-namespace
+helm install calico projectcalico/tigera-operator \
+  --version $VERSION \
+  --namespace tigera-operator \
+  --create-namespace
 ```
 
-Verify the installation by checking that the `calico-node` DaemonSet is running:
+**Step 3: Configure Calico for full CNI mode**
+
+By default, the Tigera Operator auto-detects GKE and configures Calico in policy-only mode (`cni.type: GKE`), which does not create the `calico-node` DaemonSet. You must patch the Installation to use Calico as the full CNI:
+
+```bash
+# Patch Installation to use Calico CNI instead of GKE policy-only mode
+kubectl patch installation default --type=merge -p '{
+  "spec": {
+    "kubernetesProvider": "",
+    "cni": {
+      "type": "Calico",
+      "ipam": {
+        "type": "Calico"
+      }
+    },
+    "calicoNetwork": {
+      "bgp": "Disabled",
+      "ipPools": [
+        {
+          "cidr": "192.168.0.0/16",
+          "encapsulation": "VXLAN"
+        }
+      ]
+    }
+  }
+}'
+```
+
+**Step 4: Fix Tigera Operator RBAC permissions**
+
+On GKE, the Tigera Operator may lack permissions to create resourcequotas. Apply the following RBAC fix:
+
+```bash
+# Create ClusterRole for resourcequotas
+kubectl create clusterrole tigera-resourcequota \
+  --verb=create,get,list,update,delete,watch \
+  --resource=resourcequotas
+
+# Bind to tigera-operator service account
+kubectl create clusterrolebinding tigera-resourcequota-binding \
+  --clusterrole=tigera-resourcequota \
+  --serviceaccount=tigera-operator:tigera-operator
+
+# Restart the operator to trigger reconciliation
+kubectl rollout restart deployment tigera-operator -n tigera-operator
+```
+
+**Step 5: Verify Installation**
+
+Wait for `calico-node` DaemonSet to be running on all nodes:
 
 ```bash
 kubectl get daemonset calico-node -n calico-system
 ```
 
-All nodes should show as `READY` before proceeding with the secure-enclave chart installation. For more details, refer to the [official Calico documentation](https://docs.tigera.io/calico/latest/getting-started/kubernetes/helm).
+All nodes should show as `READY` before proceeding with the secure-enclave chart installation. You can also verify the Installation status:
+
+```bash
+kubectl get installation default -o jsonpath='{.status.conditions}' | jq
+```
+
+The `Degraded` condition should be `False` and `Ready` should be `True`.
+
+For more details, refer to the [official Calico documentation](https://docs.tigera.io/calico/latest/getting-started/kubernetes/helm).
 
 ### Install Chart
 To install the chart, run:

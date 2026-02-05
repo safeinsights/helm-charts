@@ -55,8 +55,7 @@ setupApp:
   name: setup-app
   # -- Sets the service account used by setup account to manage the research container and also access the Kubernetes API
   serviceAccount:
-    annotations:
-      kubernetes.io/enforce-mountable-secrets: "true"
+    annotations: {}
   # -- Sets the persistence configuration for the setup app.
   persistence:
     # -- Sets if the persistence should be enabled during the deployment
