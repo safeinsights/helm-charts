@@ -4,12 +4,18 @@ metadata:
   name: "{{ include "secure-enclave.fullname" . }}-test-connection"
   labels:
     {{- include "secure-enclave.labels" . | nindent 4 }}
+    role: {{ .Values.researchContainer.name }}
   annotations:
     "helm.sh/hook": test
 spec:
   containers:
-    - name: wget
+    - name: test-services
       image: busybox
-      command: ['wget']
-      args: ['{{ include "secure-enclave.fullname" . }}']
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          echo "Verifying Trusted Output App service..."
+          nslookup {{ .Values.trustedOutputApp.name }}-svc.{{ .Release.Namespace }}.svc.cluster.local
+          echo "Verifying Setup App service..."
+          nslookup {{ .Values.setupApp.name }}-svc.{{ .Release.Namespace }}.svc.cluster.local
   restartPolicy: Never

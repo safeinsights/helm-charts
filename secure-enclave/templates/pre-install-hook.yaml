@@ -17,6 +17,9 @@ rules:
 - apiGroups: ["crd.projectcalico.org"]
   resources: ["networkpolicies"]
   verbs: ["delete"]
+- apiGroups: ["apps"]
+  resources: ["daemonsets"]
+  verbs: ["get"]
 
 
 ---
@@ -66,6 +69,24 @@ spec:
       restartPolicy: Never
       serviceAccountName: svc-manager
       initContainers:
+      {{- if .Values.networkPolicy.enabled }}
+      - name: calico-check
+        image: bitnami/kubectl:latest
+        imagePullPolicy: Always
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+            echo "Checking if Calico is installed on the cluster..."
+            if kubectl get daemonset calico-node -n calico-system > /dev/null 2>&1; then
+              echo "Calico is installed. Proceeding with deployment."
+            else
+              echo "ERROR: Calico is not installed on the cluster."
+              echo "Network policies are enabled (networkPolicy.enabled=true) but Calico was not found."
+              echo "Please install Calico before deploying this chart."
+              echo "See: https://docs.tigera.io/calico/latest/getting-started/kubernetes/helm"
+              exit 1
+            fi
+      {{- end }}
       - name: dnsutils
         image: alpine
         imagePullPolicy: Always
