@@ -63,7 +63,30 @@ spec:
         selector: k8s-app == "kube-dns"
         ports:
           - 53
-    
+
+    # ========================================
+    # EXCEPTION 2b: DNS via the kube-dns SERVICE IP (GKE NodeLocal DNSCache intercepts it)
+    # ========================================
+    {{- if .Values.gcp.enabled }}
+    {{- $dnsIP := include "secure-enclave.kubeDnsClusterIP" . }}
+    {{- if $dnsIP }}
+    - action: Allow
+      protocol: UDP
+      destination:
+        nets:
+          - {{ $dnsIP }}/32
+        ports:
+          - 53
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets:
+          - {{ $dnsIP }}/32
+        ports:
+          - 53
+    {{- end }}
+    {{- end }}
+
     # ========================================
     # EGRESS TO: TOA-to-TOA (service mesh)
     # ========================================

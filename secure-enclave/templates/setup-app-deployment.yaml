@@ -93,6 +93,28 @@ spec:
           - name: "HARBOR_PULL_SECRET"
             value: {{ .Values.setupApp.environmentVariables.harborPullSecret }}
         {{- end }}
+        {{- if .Values.gcp.enabled }}
+          # GCP: tell setup-app which ServiceAccount to stamp on research Jobs (Workload
+          # Identity) and which BigQuery dataset/table to inject (dataorg_bq_helper.R).
+          - name: "RESEARCH_SERVICE_ACCOUNT"
+            value: {{ .Values.gcp.workloadIdentity.researchServiceAccountName | quote }}
+          {{- if .Values.gcp.bigQuery.project }}
+          - name: "DATAORG_BQ_PROJECT"
+            value: {{ .Values.gcp.bigQuery.project | quote }}
+          {{- end }}
+          {{- if .Values.gcp.bigQuery.dataset }}
+          - name: "DATAORG_BQ_DATASET"
+            value: {{ .Values.gcp.bigQuery.dataset | quote }}
+          {{- end }}
+          {{- if .Values.gcp.bigQuery.table }}
+          - name: "DATAORG_BQ_TABLE"
+            value: {{ .Values.gcp.bigQuery.table | quote }}
+          {{- end }}
+          {{- if .Values.gcp.bigQuery.billingProject }}
+          - name: "DATAORG_BQ_BILLING_PROJECT"
+            value: {{ .Values.gcp.bigQuery.billingProject | quote }}
+          {{- end }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

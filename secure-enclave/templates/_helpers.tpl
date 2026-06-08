@@ -75,6 +75,17 @@ Get VPC CIDR from ConfigMap
 {{- end }}
 
 {{/*
+kube-dns service ClusterIP. With GKE NodeLocal DNSCache, pods query the kube-dns *service* IP
+(intercepted by the node-local cache) rather than a kube-dns pod, so a pod-selector egress rule
+isn't enough — callers also allow egress to this /32 on port 53. The kube-dns service pre-exists,
+so this lookup resolves at render time (unlike enclave-config, which a pre-install hook creates).
+*/}}
+{{- define "secure-enclave.kubeDnsClusterIP" -}}
+{{- $svc := lookup "v1" "Service" "kube-system" "kube-dns" -}}
+{{- if $svc }}{{ $svc.spec.clusterIP }}{{ end -}}
+{{- end }}
+
+{{/*
 Get allowed external endpoints from ConfigMap
 */}}
 {{- define "secure-enclave.allowedExternalEndpoints" -}}
@@ -102,6 +113,9 @@ Convert comma separated string to array
 Validate enclave configuration 
 */}}
 {{- define "secure-enclave.validateConfiguration" -}}
+{{- if and .Values.aws.enabled .Values.gcp.enabled }}
+{{- fail "aws.enabled and gcp.enabled are mutually exclusive; enable only one cloud" }}
+{{- end }}
 {{- if not .Values.managementApp }}
 {{- fail "managementApp section is required in values" }}
 {{- else if not .Values.managementApp.memberId }}

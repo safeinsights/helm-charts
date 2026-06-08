@@ -12,7 +12,11 @@ metadata:
     logging: "enabled"
     {{- end }}
 spec:
-  selector: role == "{{ .Values.researchContainer.name }}"
+  # Match the label that real research Job pods actually carry (component=research-container,
+  # set by setup-app). The previous selector role=="research" only matched the post-install
+  # test pod, so this policy never governed real research containers. Fixes a latent isolation
+  # gap and is required for the GCP BigQuery egress rule below to apply to research pods.
+  selector: component == "research-container"
   order: 10
   types:
     - Egress
@@ -32,7 +36,29 @@ spec:
         selector: k8s-app == "kube-dns"
         ports:
           - 53
-    
+
+    {{- if .Values.gcp.enabled }}
+    {{- $dnsIP := include "secure-enclave.kubeDnsClusterIP" . }}
+    {{- if $dnsIP }}
+    # GKE NodeLocal DNSCache: pods query the kube-dns SERVICE IP (intercepted on-node), not a
+    # kube-dns pod, so also allow DNS to the service ClusterIP.
+    - action: Allow
+      protocol: UDP
+      destination:
+        nets:
+          - {{ $dnsIP }}/32
+        ports:
+          - 53
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets:
+          - {{ $dnsIP }}/32
+        ports:
+          - 53
+    {{- end }}
+    {{- end }}
+
     - action: Allow
       protocol: TCP
       destination:
@@ -40,5 +66,35 @@ spec:
         selector: app == "{{ .Values.trustedOutputApp.name }}"
         ports:
           - {{ .Values.trustedOutputApp.service.targetPort }}
+
+    {{- if .Values.gcp.enabled }}
+    # GCP: allow the research pod to reach the node-local GKE metadata server so it can mint
+    # its Workload Identity (BigQuery-reader) token. Required under the default-deny Calico
+    # policy; destinations are link-local only.
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets:
+          {{- range .Values.gcp.metadataServer.cidrs }}
+          - {{ . }}
+          {{- end }}
+        ports:
+          {{- range .Values.gcp.metadataServer.ports }}
+          - {{ . }}
+          {{- end }}
+
+    # GCP: allow HTTPS to the Google APIs VIP so the research container can reach BigQuery via
+    # Private Google Access. This is the ONLY external (non-link-local) egress it is granted.
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets:
+          - {{ .Values.gcp.privateGoogleAccess.restrictedCidr }}
+          {{- if .Values.gcp.privateGoogleAccess.privateCidr }}
+          - {{ .Values.gcp.privateGoogleAccess.privateCidr }}
+          {{- end }}
+        ports:
+          - 443
+    {{- end }}
 
 {{- end}}

@@ -5,6 +5,10 @@ metadata:
   labels:
     {{- include "secure-enclave.labels" . | nindent 4 }}
     role: {{ .Values.researchContainer.name }}
+    # Match the research-network-policy selector (component=research-container) so this test
+    # pod inherits the same egress posture as real research Jobs instead of falling under
+    # deny-all.
+    component: research-container
   annotations:
     "helm.sh/hook": test
 spec:

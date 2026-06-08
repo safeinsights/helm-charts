@@ -10,8 +10,11 @@ spec:
   template:
     metadata:
       name: "{{ include "secure-enclave.fullname" . }}-post-install-hook"
-      labels: 
+      labels:
         role: {{ .Values.researchContainer.name }}
+        # Match the research-network-policy selector so this connectivity test exercises the
+        # same egress posture as real research Jobs (component=research-container).
+        component: research-container
     spec:
       restartPolicy: Never
       containers:

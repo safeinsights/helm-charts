@@ -35,6 +35,60 @@ aws:
             values:
               - us-east-1
 
+# -- This defines the values configured when deployed on GCP (GKE + BigQuery).
+# Mutually exclusive with aws.enabled.
+gcp:
+  # -- Sets if GCP configurations are enabled.
+  enabled: false
+  # -- GCP project the cluster runs in
+  project: ""
+  # -- GCP region
+  region: ""
+  # -- Persistent Disk CSI storage class for GKE
+  storageClass:
+    # -- Sets the name of the storage class
+    name: gcp-pd-sc
+    # -- Sets the storage class provisioner
+    provisioner: pd.csi.storage.gke.io
+    # -- Sets the storage class volume binding mode
+    volumeBindingMode: WaitForFirstConsumer
+    # -- Sets the storage class parameters
+    parameters:
+      type: pd-balanced
+      csi.storage.k8s.io/fstype: ext4
+    # -- Allowed topologies; empty by default. Set per-region zones to pin (topology.gke.io/zone).
+    allowedTopologies: []
+  # -- Workload Identity configuration for the research container
+  workloadIdentity:
+    # -- Dedicated K8s ServiceAccount the research jobs run under
+    researchServiceAccountName: research-sa
+    # -- GCP service-account email mapped to research-sa via Workload Identity (BigQuery reader)
+    researchGsaEmail: ""
+  # -- BigQuery configuration injected into research jobs (consumed by dataorg_bq_helper.R)
+  bigQuery:
+    project: ""
+    dataset: ""
+    table: ""
+    billingProject: ""
+  # -- Private Google Access CIDRs the research pod may reach on TCP 443
+  privateGoogleAccess:
+    # restricted.googleapis.com VIP (recommended with VPC Service Controls)
+    restrictedCidr: 199.36.153.4/30
+    # private.googleapis.com VIP (only if not using the restricted VIP)
+    privateCidr: ""
+  # -- GKE metadata server the research pod must reach to mint its Workload Identity token.
+  # Covers both the Calico (169.254.169.252:988/987) and Dataplane-V2 (169.254.169.254:80)
+  # endpoints; all are link-local so the allowlist is low risk. Without this the research
+  # container cannot obtain a BigQuery token under the default-deny Calico policy.
+  metadataServer:
+    cidrs:
+      - 169.254.169.254/32
+      - 169.254.169.252/32
+    ports:
+      - 80
+      - 987
+      - 988
+
 # -- Sets if the network policy restrictions are enforced.
 networkPolicy:
   # -- networkPolicy.enabled this enables or  disables the network policy
