@@ -65,6 +65,10 @@ spec:
   template:
     metadata:
       name: "{{ include "secure-enclave.fullname" . }}-pre-install-hook"
+      labels:
+        # Matched by enclave-bootstrap-network-policy so the hook gets DNS + API egress even
+        # when deny-all (from a prior install) is present during an upgrade.
+        enclave-bootstrap: "true"
     spec:
       restartPolicy: Never
       serviceAccountName: svc-manager

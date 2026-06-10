@@ -56,7 +56,11 @@ spec:
           - name: "MANAGEMENT_APP_MEMBER_ID"
             value: {{ .Values.managementApp.memberId }}
         {{- end }}
-          - name: "MANAGEMENT_APP_BASE_URL"
+          # The trusted-output-app reads MANAGEMENT_APP_API_URL (not _BASE_URL, which is the
+          # setup-app's variable) to build its calls to the management app
+          # (/api/job/<id>/keys, /results, status). Wrong name => "undefined/api/job/..." and
+          # job status updates fail, so setup-app tears the research container down.
+          - name: "MANAGEMENT_APP_API_URL"
             valueFrom:
               secretKeyRef:
                 name: enclave-secret

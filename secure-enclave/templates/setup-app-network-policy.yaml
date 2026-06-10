@@ -121,6 +121,21 @@ spec:
         ports:
           - 443
     {{- end }}
+
+    # ========================================
+    # EGRESS TO: private GKE control plane (post-DNAT target of the kubernetes service).
+    # Calico enforces egress on the DNAT'd master IP, so allowing only the service IP isn't
+    # enough on a private cluster.
+    # ========================================
+    {{- if .Values.gcp.masterCidr }}
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets:
+          - {{ .Values.gcp.masterCidr }}
+        ports:
+          - 443
+    {{- end }}
     
     # ========================================
     # EGRESS TO: Allowed External Endpoints

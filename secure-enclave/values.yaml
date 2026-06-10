@@ -88,6 +88,10 @@ gcp:
       - 80
       - 987
       - 988
+  # -- Private GKE control-plane CIDR (master_ipv4_cidr_block). The kubernetes service DNATs to
+  # this IP, and Calico enforces egress on the post-DNAT address, so pods that call the API
+  # (setup-app, the bootstrap hook) must be allowed egress to it on 443. Empty = not added.
+  masterCidr: ""
 
 # -- Sets if the network policy restrictions are enforced.
 networkPolicy:

@@ -99,19 +99,19 @@ spec:
           - name: "RESEARCH_SERVICE_ACCOUNT"
             value: {{ .Values.gcp.workloadIdentity.researchServiceAccountName | quote }}
           {{- if .Values.gcp.bigQuery.project }}
-          - name: "DATAORG_BQ_PROJECT"
+          - name: "GCP_PROJECT"
             value: {{ .Values.gcp.bigQuery.project | quote }}
           {{- end }}
           {{- if .Values.gcp.bigQuery.dataset }}
-          - name: "DATAORG_BQ_DATASET"
+          - name: "BQ_DATASET"
             value: {{ .Values.gcp.bigQuery.dataset | quote }}
           {{- end }}
           {{- if .Values.gcp.bigQuery.table }}
-          - name: "DATAORG_BQ_TABLE"
+          - name: "BQ_TABLE"
             value: {{ .Values.gcp.bigQuery.table | quote }}
           {{- end }}
           {{- if .Values.gcp.bigQuery.billingProject }}
-          - name: "DATAORG_BQ_BILLING_PROJECT"
+          - name: "GCP_BILLING_PROJECT"
             value: {{ .Values.gcp.bigQuery.billingProject | quote }}
           {{- end }}
         {{- end }}
