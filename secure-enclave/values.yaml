@@ -28,12 +28,25 @@ aws:
       iopsPerGB: "50"
       # -- Sets if the storage is encrypted
       encrypted: "true"
-    # -- Sets the allowed toplogies, for eg. the zone where the storage class will be created in.
-    allowedTopologies:
-      - matchLabelExpressions:
-          - key: topology.ebs.csi.aws.com/zone
-            values:
-              - us-east-1
+    # -- Allowed topologies; empty by default so WaitForFirstConsumer provisions the volume in
+    # the scheduled pod's zone. To pin zones, list them under key topology.ebs.csi.aws.com/zone
+    # (zone names, e.g. us-east-2a — not regions). Example:
+    #   - matchLabelExpressions:
+    #       - key: topology.ebs.csi.aws.com/zone
+    #         values:
+    #           - us-east-2a
+    allowedTopologies: []
+  # -- IRSA configuration for the research container — the EKS analogue of GKE Workload
+  # Identity (gcp.workloadIdentity). The ServiceAccount is created whenever aws.enabled.
+  irsa:
+    # -- Dedicated K8s ServiceAccount the research jobs run under (set by setup-app via
+    # RESEARCH_SERVICE_ACCOUNT)
+    researchServiceAccountName: research-sa
+    # -- IAM role ARN annotated onto the research SA (eks.amazonaws.com/role-arn). Empty = the
+    # SA is created without an IAM identity and research data access is network-level only
+    # (researchEgressCidrs). The role's trust policy must allow the cluster OIDC provider with
+    # sub system:serviceaccount:<namespace>:<researchServiceAccountName>.
+    researchRoleArn: ""
   # -- Research-container data-path egress (EKS). Each item opens one Calico egress allow rule
   # from the research pod to an AWS data source. Empty by default (so it emits nothing); populate
   # per deployment. Only rendered when aws.enabled. Item shape: { cidr, port[, protocol] }.
@@ -41,6 +54,9 @@ aws:
   #   - { cidr: "10.2.0.0/16", port: 5432 }  # RDS (Postgres) via VPC peering
   #   - { cidr: "10.2.0.0/16", port: 5000 }  # Redshift via VPC peering
   #   - { cidr: "0.0.0.0/0",   port: 443 }   # S3 via gateway endpoint
+  # If research jobs assume an IAM role via IRSA (aws.irsa.researchRoleArn), they also need
+  # 443 egress to STS — with the stack's STS interface VPC endpoint that is covered by the
+  # VPC CIDR, e.g. { cidr: "10.52.0.0/16", port: 443 }.
   researchEgressCidrs: []
 
 # -- This defines the values configured when deployed on GCP (GKE + BigQuery).
@@ -173,8 +189,9 @@ trustedOutputApp:
   persistence:
     # -- Sets if the persistence should be enabled during the deployment
     enabled: false
-    # -- Sets the storageClassName used for the persitence
-    storageClassName: aws-ebs
+    # -- Sets the storageClassName used for the persitence (the chart creates aws-ebs-sc on
+    # AWS and gcp-pd-sc on GCP)
+    storageClassName: aws-ebs-sc
     # -- Sets the size set for the the persitence
     pvcSize: 1Gi
     # -- Sets the access modes used for the persitence

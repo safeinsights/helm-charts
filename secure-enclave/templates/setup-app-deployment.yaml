@@ -115,6 +115,11 @@ spec:
             value: {{ .Values.gcp.bigQuery.billingProject | quote }}
           {{- end }}
         {{- end }}
+        {{- if .Values.aws.enabled }}
+          # AWS: tell setup-app which ServiceAccount to stamp on research Jobs (IRSA).
+          - name: "RESEARCH_SERVICE_ACCOUNT"
+            value: {{ (.Values.aws.irsa | default dict).researchServiceAccountName | default "research-sa" | quote }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
