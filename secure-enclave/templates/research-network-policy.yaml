@@ -21,43 +21,7 @@ spec:
   types:
     - Egress
   egress:
-    - action: Allow
-      protocol: UDP
-      destination:
-        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
-        selector: k8s-app == "kube-dns"
-        ports:
-          - 53
-
-    - action: Allow
-      protocol: TCP
-      destination:
-        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
-        selector: k8s-app == "kube-dns"
-        ports:
-          - 53
-
-    {{- if .Values.gcp.enabled }}
-    {{- $dnsIP := include "secure-enclave.kubeDnsClusterIP" . }}
-    {{- if $dnsIP }}
-    # GKE NodeLocal DNSCache: pods query the kube-dns SERVICE IP (intercepted on-node), not a
-    # kube-dns pod, so also allow DNS to the service ClusterIP.
-    - action: Allow
-      protocol: UDP
-      destination:
-        nets:
-          - {{ $dnsIP }}/32
-        ports:
-          - 53
-    - action: Allow
-      protocol: TCP
-      destination:
-        nets:
-          - {{ $dnsIP }}/32
-        ports:
-          - 53
-    {{- end }}
-    {{- end }}
+    {{- include "secure-enclave.dnsEgressRules" . | nindent 4 }}
 
     - action: Allow
       protocol: TCP
@@ -66,6 +30,22 @@ spec:
         selector: app == "{{ .Values.trustedOutputApp.name }}"
         ports:
           - {{ .Values.trustedOutputApp.service.targetPort }}
+
+    {{- if .Values.aws.enabled }}
+    # AWS: data-path egress for the research container. On EKS the research pod reads its data
+    # sources directly (RDS/Postgres, Redshift, S3 via the gateway endpoint), each of which is a
+    # destination CIDR + port allowed here. Mirrors the GCP block below; the list is empty by
+    # default, so this emits nothing unless aws.researchEgressCidrs is populated.
+    {{- range .Values.aws.researchEgressCidrs }}
+    - action: Allow
+      protocol: {{ .protocol | default "TCP" }}
+      destination:
+        nets:
+          - {{ .cidr }}
+        ports:
+          - {{ .port }}
+    {{- end }}
+    {{- end }}
 
     {{- if .Values.gcp.enabled }}
     # GCP: allow the research pod to reach the node-local GKE metadata server so it can mint

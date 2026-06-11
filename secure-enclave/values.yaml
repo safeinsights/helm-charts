@@ -34,6 +34,14 @@ aws:
           - key: topology.ebs.csi.aws.com/zone
             values:
               - us-east-1
+  # -- Research-container data-path egress (EKS). Each item opens one Calico egress allow rule
+  # from the research pod to an AWS data source. Empty by default (so it emits nothing); populate
+  # per deployment. Only rendered when aws.enabled. Item shape: { cidr, port[, protocol] }.
+  # Example:
+  #   - { cidr: "10.2.0.0/16", port: 5432 }  # RDS (Postgres) via VPC peering
+  #   - { cidr: "10.2.0.0/16", port: 5000 }  # Redshift via VPC peering
+  #   - { cidr: "0.0.0.0/0",   port: 443 }   # S3 via gateway endpoint
+  researchEgressCidrs: []
 
 # -- This defines the values configured when deployed on GCP (GKE + BigQuery).
 # Mutually exclusive with aws.enabled.

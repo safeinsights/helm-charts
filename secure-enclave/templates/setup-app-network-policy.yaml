@@ -30,51 +30,7 @@ spec:
     {{- end }}
   
   egress:
-    # ========================================
-    # EXCEPTION 1: DNS Resolution (UDP - Primary)
-    # Setup app needs DNS for name resolution
-    # ========================================
-    - action: Allow
-      protocol: UDP
-      destination:
-        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
-        selector: k8s-app == "kube-dns"
-        ports:
-          - 53
-    
-    # ========================================
-    # EXCEPTION 2: DNS Resolution (TCP - Fallback)
-    # ========================================
-    - action: Allow
-      protocol: TCP
-      destination:
-        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
-        selector: k8s-app == "kube-dns"
-        ports:
-          - 53
-
-    # ========================================
-    # EXCEPTION 2b: DNS via the kube-dns SERVICE IP (GKE NodeLocal DNSCache intercepts it)
-    # ========================================
-    {{- if .Values.gcp.enabled }}
-    {{- $dnsIP := include "secure-enclave.kubeDnsClusterIP" . }}
-    {{- if $dnsIP }}
-    - action: Allow
-      protocol: UDP
-      destination:
-        nets:
-          - {{ $dnsIP }}/32
-        ports:
-          - 53
-    - action: Allow
-      protocol: TCP
-      destination:
-        nets:
-          - {{ $dnsIP }}/32
-        ports:
-          - 53
-    {{- end }}
-    {{- end }}
+    {{- include "secure-enclave.dnsEgressRules" . | nindent 4 }}
 
     # ========================================
     # EGRESS TO: Trusted Output App

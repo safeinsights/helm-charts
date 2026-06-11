@@ -51,17 +51,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
-*/}}
-{{- define "secure-enclave.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "secure-enclave.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
-{{/*
 Get VPC CIDR from ConfigMap
 */}}
 {{- define "secure-enclave.svcCidr" -}}
@@ -86,27 +75,56 @@ so this lookup resolves at render time (unlike enclave-config, which a pre-insta
 {{- end }}
 
 {{/*
+DNS egress rules shared by the setup-app, TOA, and research network policies: allow UDP+TCP to
+the kube-dns pods, plus (on GKE) the kube-dns SERVICE ClusterIP. With NodeLocal DNSCache, pods
+query the service IP (intercepted on-node) rather than a kube-dns pod, so the pod-selector rule
+alone isn't enough. Single source so the three policies can't drift. Include with:
+  {{- include "secure-enclave.dnsEgressRules" . | nindent 4 }}
+*/}}
+{{- define "secure-enclave.dnsEgressRules" -}}
+- action: Allow
+  protocol: UDP
+  destination:
+    namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+    selector: k8s-app == "kube-dns"
+    ports:
+      - 53
+- action: Allow
+  protocol: TCP
+  destination:
+    namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+    selector: k8s-app == "kube-dns"
+    ports:
+      - 53
+{{- if .Values.gcp.enabled }}
+{{- $dnsIP := include "secure-enclave.kubeDnsClusterIP" . }}
+{{- if $dnsIP }}
+- action: Allow
+  protocol: UDP
+  destination:
+    nets:
+      - {{ $dnsIP }}/32
+    ports:
+      - 53
+- action: Allow
+  protocol: TCP
+  destination:
+    nets:
+      - {{ $dnsIP }}/32
+    ports:
+      - 53
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
 Get allowed external endpoints from ConfigMap
 */}}
 {{- define "secure-enclave.allowedExternalEndpoints" -}}
 {{- $configMap := lookup "v1" "ConfigMap" .Release.Namespace "enclave-config" }}
 {{- if $configMap }}
-{{- $endpoints := index $configMap.data "allowed-external-endpoints" }}
-{{- if $endpoints }}
-{{- $endpoints }}
-{{- else }}
+{{- index $configMap.data "allowed-external-endpoints" }}
 {{- end }}
-{{- else }}
-{{- end }}
-{{- end }}
-
-
-
-{{/*
-Convert comma separated string to array
-*/}}
-{{- define "secure-enclave.commaSepToStringArray" -}}
-{{- splitList "," . -}}
 {{- end }}
 
 {{/*
