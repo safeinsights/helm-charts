@@ -1,0 +1,16 @@
+{{- if .Values.gcp.enabled -}}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.gcp.storageClass.name }}
+provisioner: {{ .Values.gcp.storageClass.provisioner }}
+volumeBindingMode: {{ .Values.gcp.storageClass.volumeBindingMode }}
+{{- with .Values.gcp.storageClass.parameters }}
+parameters:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with .Values.gcp.storageClass.allowedTopologies }}
+allowedTopologies:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- end }}

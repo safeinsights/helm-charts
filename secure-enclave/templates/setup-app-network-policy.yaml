@@ -30,29 +30,8 @@ spec:
     {{- end }}
   
   egress:
-    # ========================================
-    # EXCEPTION 1: DNS Resolution (UDP - Primary)
-    # Setup app needs DNS for name resolution
-    # ========================================
-    - action: Allow
-      protocol: UDP
-      destination:
-        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
-        selector: k8s-app == "kube-dns"
-        ports:
-          - 53
-    
-    # ========================================
-    # EXCEPTION 2: DNS Resolution (TCP - Fallback)
-    # ========================================
-    - action: Allow
-      protocol: TCP
-      destination:
-        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
-        selector: k8s-app == "kube-dns"
-        ports:
-          - 53
-    
+    {{- include "secure-enclave.dnsEgressRules" . | nindent 4 }}
+
     # ========================================
     # EGRESS TO: Trusted Output App
     # ========================================
@@ -95,6 +74,21 @@ spec:
       destination:
         nets:
           - {{ printf "%s/32" $svc.spec.clusterIP }}
+        ports:
+          - 443
+    {{- end }}
+
+    # ========================================
+    # EGRESS TO: private GKE control plane (post-DNAT target of the kubernetes service).
+    # Calico enforces egress on the DNAT'd master IP, so allowing only the service IP isn't
+    # enough on a private cluster.
+    # ========================================
+    {{- if .Values.gcp.masterCidr }}
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets:
+          - {{ .Values.gcp.masterCidr }}
         ports:
           - 443
     {{- end }}

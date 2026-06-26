@@ -9,9 +9,8 @@ volumeBindingMode: {{ .Values.aws.storageClass.volumeBindingMode }}
 parameters:
   {{- toYaml . | nindent 2 }}
 {{- end }}
+{{- with .Values.aws.storageClass.allowedTopologies }}
 allowedTopologies:
-  - matchLabelExpressions:
-      - key: topology.ebs.csi.aws.com/zone
-        values:
-          - ca-central-1
+  {{- toYaml . | nindent 2 }}
+{{- end }}
 {{- end }}

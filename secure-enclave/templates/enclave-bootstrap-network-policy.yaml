@@ -1,0 +1,76 @@
+{{- if .Values.networkPolicy.enabled -}}
+# Egress allowance for the chart's pre-install/pre-upgrade bootstrap hook (pods labeled
+# enclave-bootstrap=true). The hook resolves DNS and talks to the Kubernetes API
+# (calico-check, secret/configmap management). On an UPGRADE the deny-all policy from a prior
+# install is already present and would otherwise block the hook (the calico-check then can't
+# reach the API and wrongly reports "Calico is not installed"). deny-all has no deny rules — it
+# just makes endpoints governed — so these allow rules are additive and unblock the hook
+# without weakening deny-all for any other pod.
+apiVersion: crd.projectcalico.org/v1
+kind: NetworkPolicy
+metadata:
+  name: enclave-bootstrap-network-policy
+  annotations:
+    description: "Egress for the pre-install/upgrade bootstrap hook (DNS + Kubernetes API)"
+spec:
+  selector: enclave-bootstrap == "true"
+  order: 5
+  types:
+    - Egress
+  egress:
+    # DNS to kube-dns pods
+    - action: Allow
+      protocol: UDP
+      destination:
+        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+        selector: k8s-app == "kube-dns"
+        ports:
+          - 53
+    - action: Allow
+      protocol: TCP
+      destination:
+        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
+        selector: k8s-app == "kube-dns"
+        ports:
+          - 53
+    {{- $dnsIP := include "secure-enclave.kubeDnsClusterIP" . }}
+    {{- if $dnsIP }}
+    # DNS via the kube-dns service IP (GKE NodeLocal DNSCache intercepts it on-node)
+    - action: Allow
+      protocol: UDP
+      destination:
+        nets:
+          - {{ $dnsIP }}/32
+        ports:
+          - 53
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets:
+          - {{ $dnsIP }}/32
+        ports:
+          - 53
+    {{- end }}
+    # Kubernetes API server (kubectl: calico-check + secret/configmap management)
+    {{- $api := lookup "v1" "Service" "default" "kubernetes" }}
+    {{- if $api }}
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets:
+          - {{ $api.spec.clusterIP }}/32
+        ports:
+          - 443
+    {{- end }}
+    # Private GKE control plane — the kubernetes service DNATs here and Calico evaluates the
+    # post-DNAT address, so the service IP alone isn't enough on a private cluster.
+    {{- if .Values.gcp.masterCidr }}
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets:
+          - {{ .Values.gcp.masterCidr }}
+        ports:
+          - 443
+    {{- end }}
+{{- end }}

@@ -28,12 +28,94 @@ aws:
       iopsPerGB: "50"
       # -- Sets if the storage is encrypted
       encrypted: "true"
-    # -- Sets the allowed toplogies, for eg. the zone where the storage class will be created in.
-    allowedTopologies:
-      - matchLabelExpressions:
-          - key: topology.ebs.csi.aws.com/zone
-            values:
-              - us-east-1
+    # -- Allowed topologies; empty by default so WaitForFirstConsumer provisions the volume in
+    # the scheduled pod's zone. To pin zones, list them under key topology.ebs.csi.aws.com/zone
+    # (zone names, e.g. us-east-2a — not regions). Example:
+    #   - matchLabelExpressions:
+    #       - key: topology.ebs.csi.aws.com/zone
+    #         values:
+    #           - us-east-2a
+    allowedTopologies: []
+  # -- IRSA configuration for the research container — the EKS analogue of GKE Workload
+  # Identity (gcp.workloadIdentity). The ServiceAccount is created whenever aws.enabled.
+  irsa:
+    # -- Dedicated K8s ServiceAccount the research jobs run under (set by setup-app via
+    # RESEARCH_SERVICE_ACCOUNT)
+    researchServiceAccountName: research-sa
+    # -- IAM role ARN annotated onto the research SA (eks.amazonaws.com/role-arn). Empty = the
+    # SA is created without an IAM identity and research data access is network-level only
+    # (researchEgressCidrs). The role's trust policy must allow the cluster OIDC provider with
+    # sub system:serviceaccount:<namespace>:<researchServiceAccountName>.
+    researchRoleArn: ""
+  # -- Research-container data-path egress (EKS). Each item opens one Calico egress allow rule
+  # from the research pod to an AWS data source. Empty by default (so it emits nothing); populate
+  # per deployment. Only rendered when aws.enabled. Item shape: { cidr, port[, protocol] }.
+  # Example:
+  #   - { cidr: "10.2.0.0/16", port: 5432 }  # RDS (Postgres) via VPC peering
+  #   - { cidr: "10.2.0.0/16", port: 5000 }  # Redshift via VPC peering
+  #   - { cidr: "0.0.0.0/0",   port: 443 }   # S3 via gateway endpoint
+  # If research jobs assume an IAM role via IRSA (aws.irsa.researchRoleArn), they also need
+  # 443 egress to STS — with the stack's STS interface VPC endpoint that is covered by the
+  # VPC CIDR, e.g. { cidr: "10.52.0.0/16", port: 443 }.
+  researchEgressCidrs: []
+
+# -- This defines the values configured when deployed on GCP (GKE + BigQuery).
+# Mutually exclusive with aws.enabled.
+gcp:
+  # -- Sets if GCP configurations are enabled.
+  enabled: false
+  # -- GCP project the cluster runs in
+  project: ""
+  # -- GCP region
+  region: ""
+  # -- Persistent Disk CSI storage class for GKE
+  storageClass:
+    # -- Sets the name of the storage class
+    name: gcp-pd-sc
+    # -- Sets the storage class provisioner
+    provisioner: pd.csi.storage.gke.io
+    # -- Sets the storage class volume binding mode
+    volumeBindingMode: WaitForFirstConsumer
+    # -- Sets the storage class parameters
+    parameters:
+      type: pd-balanced
+      csi.storage.k8s.io/fstype: ext4
+    # -- Allowed topologies; empty by default. Set per-region zones to pin (topology.gke.io/zone).
+    allowedTopologies: []
+  # -- Workload Identity configuration for the research container
+  workloadIdentity:
+    # -- Dedicated K8s ServiceAccount the research jobs run under
+    researchServiceAccountName: research-sa
+    # -- GCP service-account email mapped to research-sa via Workload Identity (BigQuery reader)
+    researchGsaEmail: ""
+  # -- BigQuery configuration injected into research jobs (consumed by dataorg_bq_helper.R)
+  bigQuery:
+    project: ""
+    dataset: ""
+    table: ""
+    billingProject: ""
+  # -- Private Google Access CIDRs the research pod may reach on TCP 443
+  privateGoogleAccess:
+    # restricted.googleapis.com VIP (recommended with VPC Service Controls)
+    restrictedCidr: 199.36.153.4/30
+    # private.googleapis.com VIP (only if not using the restricted VIP)
+    privateCidr: ""
+  # -- GKE metadata server the research pod must reach to mint its Workload Identity token.
+  # Covers both the Calico (169.254.169.252:988/987) and Dataplane-V2 (169.254.169.254:80)
+  # endpoints; all are link-local so the allowlist is low risk. Without this the research
+  # container cannot obtain a BigQuery token under the default-deny Calico policy.
+  metadataServer:
+    cidrs:
+      - 169.254.169.254/32
+      - 169.254.169.252/32
+    ports:
+      - 80
+      - 987
+      - 988
+  # -- Private GKE control-plane CIDR (master_ipv4_cidr_block). The kubernetes service DNATs to
+  # this IP, and Calico enforces egress on the post-DNAT address, so pods that call the API
+  # (setup-app, the bootstrap hook) must be allowed egress to it on 443. Empty = not added.
+  masterCidr: ""
 
 # -- Sets if the network policy restrictions are enforced.
 networkPolicy:
@@ -107,8 +189,9 @@ trustedOutputApp:
   persistence:
     # -- Sets if the persistence should be enabled during the deployment
     enabled: false
-    # -- Sets the storageClassName used for the persitence
-    storageClassName: aws-ebs
+    # -- Sets the storageClassName used for the persitence (the chart creates aws-ebs-sc on
+    # AWS and gcp-pd-sc on GCP)
+    storageClassName: aws-ebs-sc
     # -- Sets the size set for the the persitence
     pvcSize: 1Gi
     # -- Sets the access modes used for the persitence

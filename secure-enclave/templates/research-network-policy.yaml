@@ -12,27 +12,17 @@ metadata:
     logging: "enabled"
     {{- end }}
 spec:
-  selector: role == "{{ .Values.researchContainer.name }}"
+  # Match the label that real research Job pods actually carry (component=research-container,
+  # set by setup-app). The previous selector role=="research" only matched the post-install
+  # test pod, so this policy never governed real research containers. Fixes a latent isolation
+  # gap and is required for the GCP BigQuery egress rule below to apply to research pods.
+  selector: component == "research-container"
   order: 10
   types:
     - Egress
   egress:
-    - action: Allow
-      protocol: UDP
-      destination:
-        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
-        selector: k8s-app == "kube-dns"
-        ports:
-          - 53
+    {{- include "secure-enclave.dnsEgressRules" . | nindent 4 }}
 
-    - action: Allow
-      protocol: TCP
-      destination:
-        namespaceSelector: kubernetes.io/metadata.name == "kube-system"
-        selector: k8s-app == "kube-dns"
-        ports:
-          - 53
-    
     - action: Allow
       protocol: TCP
       destination:
@@ -40,5 +30,51 @@ spec:
         selector: app == "{{ .Values.trustedOutputApp.name }}"
         ports:
           - {{ .Values.trustedOutputApp.service.targetPort }}
+
+    {{- if .Values.aws.enabled }}
+    # AWS: data-path egress for the research container. On EKS the research pod reads its data
+    # sources directly (RDS/Postgres, Redshift, S3 via the gateway endpoint), each of which is a
+    # destination CIDR + port allowed here. Mirrors the GCP block below; the list is empty by
+    # default, so this emits nothing unless aws.researchEgressCidrs is populated.
+    {{- range .Values.aws.researchEgressCidrs }}
+    - action: Allow
+      protocol: {{ .protocol | default "TCP" }}
+      destination:
+        nets:
+          - {{ .cidr }}
+        ports:
+          - {{ .port }}
+    {{- end }}
+    {{- end }}
+
+    {{- if .Values.gcp.enabled }}
+    # GCP: allow the research pod to reach the node-local GKE metadata server so it can mint
+    # its Workload Identity (BigQuery-reader) token. Required under the default-deny Calico
+    # policy; destinations are link-local only.
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets:
+          {{- range .Values.gcp.metadataServer.cidrs }}
+          - {{ . }}
+          {{- end }}
+        ports:
+          {{- range .Values.gcp.metadataServer.ports }}
+          - {{ . }}
+          {{- end }}
+
+    # GCP: allow HTTPS to the Google APIs VIP so the research container can reach BigQuery via
+    # Private Google Access. This is the ONLY external (non-link-local) egress it is granted.
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets:
+          - {{ .Values.gcp.privateGoogleAccess.restrictedCidr }}
+          {{- if .Values.gcp.privateGoogleAccess.privateCidr }}
+          - {{ .Values.gcp.privateGoogleAccess.privateCidr }}
+          {{- end }}
+        ports:
+          - 443
+    {{- end }}
 
 {{- end}}
