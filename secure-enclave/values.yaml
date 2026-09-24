@@ -84,8 +84,8 @@ gcp:
     researchServiceAccountName: research-sa
     # -- GCP service-account email mapped to research-sa via Workload Identity (BigQuery reader)
     researchGsaEmail: ""
-  # -- BigQuery configuration. Passed to setup-app as GCP_PROJECT / BQ_DATASET / BQ_TABLE /
-  # GCP_BILLING_PROJECT, which it injects into every research Job it launches (consumed by
+  # -- BigQuery configuration. Passed to setup-app as BQ_PROJECT / BQ_DATASET / BQ_TABLE /
+  # BQ_BILLING_PROJECT, which it injects into every research Job it launches (consumed by
   # dataorg_bq_helper.R).
   bigQuery:
     project: ""

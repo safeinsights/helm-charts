@@ -129,7 +129,7 @@ managementApp:
   memberId: Your member Id. This value is required.
 ```
 
-On GKE with BigQuery, also enable the `gcp` block. The chart passes these to the Setup App as `GCP_PROJECT`, `BQ_DATASET`, `BQ_TABLE` and `GCP_BILLING_PROJECT`, and the Setup App injects them into every research Job it launches:
+On GKE with BigQuery, also enable the `gcp` block. The chart passes these to the Setup App as `BQ_PROJECT`, `BQ_DATASET`, `BQ_TABLE` and `BQ_BILLING_PROJECT`, and the Setup App injects them into every research Job it launches:
 ``` yaml
 managementApp:
   memberId: your-member-id
@@ -174,9 +174,9 @@ The following parameters can be configured using a `values.yaml` file. For more 
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| gcp.bigQuery.billingProject | string | `""` | Project billed for BigQuery queries. Passed to the Setup App as GCP_BILLING_PROJECT |
+| gcp.bigQuery.billingProject | string | `""` | Project billed for BigQuery queries. Passed to the Setup App as BQ_BILLING_PROJECT |
 | gcp.bigQuery.dataset | string | `""` | BigQuery dataset. Passed to the Setup App as BQ_DATASET |
-| gcp.bigQuery.project | string | `""` | Project holding the BigQuery dataset. Passed to the Setup App as GCP_PROJECT |
+| gcp.bigQuery.project | string | `""` | Project holding the BigQuery dataset. Passed to the Setup App as BQ_PROJECT |
 | gcp.bigQuery.table | string | `""` | BigQuery table. Passed to the Setup App as BQ_TABLE |
 | gcp.enabled | bool | `false` | Sets if GCP (GKE + BigQuery) configurations are enabled. Mutually exclusive with aws.enabled |
 | gcp.workloadIdentity.researchGsaEmail | string | `""` | GCP service-account email bound to the research ServiceAccount via Workload Identity. Required when gcp.enabled |
