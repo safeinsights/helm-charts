@@ -192,7 +192,7 @@ The following parameters can be configured using a `values.yaml` file. For more 
 | setupApp.image.pullPolicy | string | `"Always"` | Sets the image pull policy |
 | setupApp.image.registry | string | `"harbor.safeinsights.org/safeinsights-public"` | Sets the image registry |
 | setupApp.image.repository | string | `"setup-app"` | Sets the image repository |
-| setupApp.image.tag | string | `"20260917-96e7a99f"` | Sets the image tag |
+| setupApp.image.tag | string | `"20260924-ce8cb07f"` | Sets the image tag |
 | setupApp.name | string | `"setup-app"` | Sets the name of the deployment and containers for the setup app |
 | setupApp.persistence.accessModes | list | `["ReadWriteOnce"]` | Sets the access modes used for the persitence |
 | setupApp.persistence.enabled | bool | `false` | Sets if the persistence should be enabled during the deployment |
