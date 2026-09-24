@@ -103,7 +103,7 @@ spec:
           - name: "RESEARCH_SERVICE_ACCOUNT"
             value: {{ .Values.gcp.workloadIdentity.researchServiceAccountName | quote }}
           {{- if .Values.gcp.bigQuery.project }}
-          - name: "GCP_PROJECT"
+          - name: "BQ_PROJECT"
             value: {{ .Values.gcp.bigQuery.project | quote }}
           {{- end }}
           {{- if .Values.gcp.bigQuery.dataset }}
@@ -115,7 +115,7 @@ spec:
             value: {{ .Values.gcp.bigQuery.table | quote }}
           {{- end }}
           {{- if .Values.gcp.bigQuery.billingProject }}
-          - name: "GCP_BILLING_PROJECT"
+          - name: "BQ_BILLING_PROJECT"
             value: {{ .Values.gcp.bigQuery.billingProject | quote }}
           {{- end }}
         {{- end }}
