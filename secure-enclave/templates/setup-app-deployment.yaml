@@ -78,9 +78,13 @@ spec:
                 name: enclave-secret
                 key: management-app-api-url
         {{- end }}
-        {{- if .Values.setupApp.environmentVariables.pollIntervall }}
-          - name: "POLL_INTERVALL"
-            value: {{ .Values.setupApp.environmentVariables.pollIntervall | quote }}
+        {{- if .Values.setupApp.environmentVariables.pollStudiesIntervalSeconds }}
+          - name: "POLL_STUDIES_INTERVAL_SECONDS"
+            value: {{ .Values.setupApp.environmentVariables.pollStudiesIntervalSeconds | quote }}
+        {{- end }}
+        {{- if .Values.setupApp.environmentVariables.pollErroredJobsIntervalSeconds }}
+          - name: "POLL_ERRORED_JOBS_INTERVAL_SECONDS"
+            value: {{ .Values.setupApp.environmentVariables.pollErroredJobsIntervalSeconds | quote }}
         {{- end }}
           - name: "TOA_BASE_URL"
             value: http://{{ .Values.trustedOutputApp.name }}-svc:{{ .Values.trustedOutputApp.service.port }}

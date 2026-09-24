@@ -129,6 +129,21 @@ managementApp:
   memberId: Your member Id. This value is required.
 ```
 
+On GKE with BigQuery, also enable the `gcp` block. The chart passes these to the Setup App as `GCP_PROJECT`, `BQ_DATASET`, `BQ_TABLE` and `GCP_BILLING_PROJECT`, and the Setup App injects them into every research Job it launches:
+``` yaml
+managementApp:
+  memberId: your-member-id
+gcp:
+  enabled: true
+  workloadIdentity:
+    researchGsaEmail: bq-reader@my-gcp-project.iam.gserviceaccount.com
+  bigQuery:
+    project: my-gcp-project
+    dataset: enclave_data
+    table: events
+    # billingProject: my-billing # only if queries are billed to a different project
+```
+
 ## Pre Deployment Requirements
 Before deploying the helm chart, we first need to have credentials from the [image repository](https://harbor.safeinsights.org/)
 
@@ -159,17 +174,25 @@ The following parameters can be configured using a `values.yaml` file. For more 
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| gcp.bigQuery.billingProject | string | `""` | Project billed for BigQuery queries. Passed to the Setup App as GCP_BILLING_PROJECT |
+| gcp.bigQuery.dataset | string | `""` | BigQuery dataset. Passed to the Setup App as BQ_DATASET |
+| gcp.bigQuery.project | string | `""` | Project holding the BigQuery dataset. Passed to the Setup App as GCP_PROJECT |
+| gcp.bigQuery.table | string | `""` | BigQuery table. Passed to the Setup App as BQ_TABLE |
+| gcp.enabled | bool | `false` | Sets if GCP (GKE + BigQuery) configurations are enabled. Mutually exclusive with aws.enabled |
+| gcp.workloadIdentity.researchGsaEmail | string | `""` | GCP service-account email bound to the research ServiceAccount via Workload Identity. Required when gcp.enabled |
+| gcp.workloadIdentity.researchServiceAccountName | string | `"research-sa"` | K8s ServiceAccount the research jobs run under |
 | managementApp.endpoint | string | `"https://app.safeinsights.org"` | Sets the endpoint where the management app is available. |
 | managementApp.memberId | string | `nil` | Sets the id of the member deploying the enclave |
 | networkPolicy.enabled | bool | `true` | networkPolicy.enabled this enables or  disables the network policy |
 | setupApp.command | list | `["npx","tsx","src/scripts/poll.ts"]` | Sets the command to start the setup app container |
 | setupApp.enabled | bool | `true` | Sets if the setup app should be deployed |
 | setupApp.environmentVariables.harborPullSecret | string | `"si-docker-config"` | setupApp.environmentVariables.harborPullSecret this configures the pull secret from harbor |
-| setupApp.environmentVariables.pollIntervall | string | `"60000"` | setupApp.environmentVariables.pollIntervall this overrides the setup app polling interval |
+| setupApp.environmentVariables.pollErroredJobsIntervalSeconds | string | `"60"` | Seconds between checks for errored research jobs (POLL_ERRORED_JOBS_INTERVAL_SECONDS) |
+| setupApp.environmentVariables.pollStudiesIntervalSeconds | string | `"30"` | Seconds between polls of the management app for ready studies (POLL_STUDIES_INTERVAL_SECONDS) |
 | setupApp.image.pullPolicy | string | `"Always"` | Sets the image pull policy |
 | setupApp.image.registry | string | `"harbor.safeinsights.org/safeinsights-public"` | Sets the image registry |
 | setupApp.image.repository | string | `"setup-app"` | Sets the image repository |
-| setupApp.image.tag | string | `"20251006-e1ccae88"` | Sets the image tag |
+| setupApp.image.tag | string | `"20260917-96e7a99f"` | Sets the image tag |
 | setupApp.name | string | `"setup-app"` | Sets the name of the deployment and containers for the setup app |
 | setupApp.persistence.accessModes | list | `["ReadWriteOnce"]` | Sets the access modes used for the persitence |
 | setupApp.persistence.enabled | bool | `false` | Sets if the persistence should be enabled during the deployment |
@@ -180,12 +203,12 @@ The following parameters can be configured using a `values.yaml` file. For more 
 | setupApp.service.targetPort | int | `5051` | Sets the container internal port that the service redirects to. |
 | setupApp.service.type | string | `"ClusterIP"` | Sets the service type |
 | setupApp.workingDir | string | `"/home/node/code"` | Sets the working directory inside the setup app container |
-| trustedOutputApp.command | list | `["npm","run","start"]` | Sets the command to start the trusted output app container |
+| trustedOutputApp.command | list | `["node","dist/server.js"]` | Sets the command to start the trusted output app container (the runtime image ships only the bundled dist/) |
 | trustedOutputApp.enabled | bool | `true` | Sets if the trusted output app should be deployed |
 | trustedOutputApp.image.pullPolicy | string | `"Always"` | Sets the image pull policy |
 | trustedOutputApp.image.registry | string | `"harbor.safeinsights.org/safeinsights-public"` | Sets the image registry |
 | trustedOutputApp.image.repository | string | `"trusted-output-app"` | Sets the image repository |
-| trustedOutputApp.image.tag | string | `"20250728-a5d087fc"` | Sets the image tag |
+| trustedOutputApp.image.tag | string | `"20260916-93ffdf21"` | Sets the image tag |
 | trustedOutputApp.name | string | `"toa"` | Sets the name of the deployment and containers for the trusted output app |
 | trustedOutputApp.persistence.accessModes | list | `["ReadWriteOnce"]` | Sets the access modes used for the persitence |
 | trustedOutputApp.persistence.enabled | bool | `false` | Sets if the persistence should be enabled during the deployment |

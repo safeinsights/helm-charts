@@ -64,10 +64,6 @@ aws:
 gcp:
   # -- Sets if GCP configurations are enabled.
   enabled: false
-  # -- GCP project the cluster runs in
-  project: ""
-  # -- GCP region
-  region: ""
   # -- Persistent Disk CSI storage class for GKE
   storageClass:
     # -- Sets the name of the storage class
@@ -88,7 +84,9 @@ gcp:
     researchServiceAccountName: research-sa
     # -- GCP service-account email mapped to research-sa via Workload Identity (BigQuery reader)
     researchGsaEmail: ""
-  # -- BigQuery configuration injected into research jobs (consumed by dataorg_bq_helper.R)
+  # -- BigQuery configuration. Passed to setup-app as GCP_PROJECT / BQ_DATASET / BQ_TABLE /
+  # GCP_BILLING_PROJECT, which it injects into every research Job it launches (consumed by
+  # dataorg_bq_helper.R).
   bigQuery:
     project: ""
     dataset: ""
@@ -166,7 +164,7 @@ setupApp:
     # -- Sets the image repository
     repository: setup-app
     # -- Sets the image tag
-    tag: 20260107-3bd4ba00
+    tag: 20260917-96e7a99f
     # -- Sets the image pull policy
     pullPolicy: Always
   # -- Sets the working directory inside the setup app container
@@ -177,8 +175,11 @@ setupApp:
   environmentVariables:
     # -- setupApp.environmentVariables.harborPullSecret this configures the pull secret from harbor
     harborPullSecret: si-docker-config
-    # -- setupApp.environmentVariables.pollIntervall this overrides the setup app polling interval
-    pollIntervall: "60000"
+    # -- Seconds between polls of the management app for ready studies (POLL_STUDIES_INTERVAL_SECONDS)
+    pollStudiesIntervalSeconds: "30"
+    # -- Seconds between checks for errored research jobs, whose logs are then sent to the TOA
+    # (POLL_ERRORED_JOBS_INTERVAL_SECONDS)
+    pollErroredJobsIntervalSeconds: "60"
 # -- Sets the trusted output app configuration
 trustedOutputApp:
   # -- Sets if the trusted output app should be deployed
@@ -214,13 +215,14 @@ trustedOutputApp:
     # -- Sets the image repository
     repository: trusted-output-app
     # -- Sets the image tag
-    tag: 20260105-f24b3dd4
+    tag: 20260916-93ffdf21
     # -- Sets the image pull policy
     pullPolicy: Always
   # -- Sets the working directory inside the setup app container
   workingDir: /home/node/app
-  # -- Sets the command to start the trusted output app container
-  command: ["npm", "run", "start"]
+  # -- Sets the command to start the trusted output app container. The runtime image only ships the
+  # bundled dist/ (no package.json or npm scripts), so this must be the node entrypoint directly.
+  command: ["node", "dist/server.js"]
 # -- Sets the research container app configuration
 ##
 researchContainer:
