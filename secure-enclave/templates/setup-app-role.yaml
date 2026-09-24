@@ -13,6 +13,10 @@ rules:
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list", "delete"]
+  # so setup-app can read failed logs
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get","list"]
