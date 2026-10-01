@@ -3,6 +3,19 @@ entries:
   secure-enclave:
   - apiVersion: v2
     appVersion: 1.1.0
+    created: "2026-10-01T18:01:31.094185504Z"
+    description: A Helm chart for Kubernetes
+    digest: 3487e121415042fe892e9e9bf67360959f0746396c1b273af2ac824946329cc3
+    maintainers:
+    - email: administrators@safeinsights.org
+      name: SafeInsights
+    name: secure-enclave
+    type: application
+    urls:
+    - https://github.com/safeinsights/helm-charts/releases/download/secure-enclave-1.4.0/secure-enclave-1.4.0.tgz
+    version: 1.4.0
+  - apiVersion: v2
+    appVersion: 1.1.0
     created: "2026-09-24T16:53:30.455882863Z"
     description: A Helm chart for Kubernetes
     digest: b32d4015f8acaf969526cd29042c949a7a32295fc4b47e03c8df99d2f9e2a126
@@ -79,4 +92,4 @@ entries:
     urls:
     - https://github.com/safeinsights/helm-charts/releases/download/secure-enclave-0.1.0/secure-enclave-0.1.0.tgz
     version: 0.1.0
-generated: "2026-09-24T16:53:30.455904686Z"
+generated: "2026-10-01T18:01:31.094205093Z"
