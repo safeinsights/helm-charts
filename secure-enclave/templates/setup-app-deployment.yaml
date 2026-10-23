@@ -43,6 +43,10 @@ spec:
       - name: {{ .Values.setupApp.image.repository }}
         imagePullPolicy: {{ .Values.setupApp.image.pullPolicy }}
         image: {{ .Values.setupApp.image.registry }}/{{ .Values.setupApp.image.repository }}:{{ .Values.setupApp.image.tag }}  
+        {{- with .Values.setupApp.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         ports:
           - containerPort: {{ .Values.setupApp.service.targetPort  }}
         {{- if .Values.setupApp.workingDir }}
