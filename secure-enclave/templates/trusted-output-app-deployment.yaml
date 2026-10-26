@@ -33,13 +33,10 @@ spec:
       - name: {{ .Values.trustedOutputApp.image.repository }}
         imagePullPolicy: {{ .Values.trustedOutputApp.image.pullPolicy }}
         image: {{ .Values.trustedOutputApp.image.registry }}/{{ .Values.trustedOutputApp.image.repository }}:{{ .Values.trustedOutputApp.image.tag }}
+        {{- with .Values.trustedOutputApp.resources }}
         resources:
-          limits:
-            cpu: 100m
-            memory: 128Mi
-          requests:
-            cpu: 100m
-            memory: 128Mi  
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         ports:
           - containerPort: {{.Values.trustedOutputApp.service.targetPort}}
         {{- if .Values.trustedOutputApp.workingDir }}
