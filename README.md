@@ -184,6 +184,8 @@ The following parameters can be configured using a `values.yaml` file. For more 
 | managementApp.endpoint | string | `"https://app.safeinsights.org"` | Sets the endpoint where the management app is available. |
 | managementApp.memberId | string | `nil` | Sets the id of the member deploying the enclave |
 | networkPolicy.enabled | bool | `true` | networkPolicy.enabled this enables or  disables the network policy |
+| researchContainer.resources | object | `{}` | Sets the research container resources, passed to the Setup App as RESEARCH_CONTAINER_RESOURCES. Empty leaves them to the cluster's defaults |
+| researchContainer.timeoutSeconds | string | `""` | Sets the research pod's time limit in seconds, passed to the Setup App as RESEARCH_CONTAINER_TIMEOUT_SECONDS. Empty means no limit |
 | setupApp.command | list | `["npx","tsx","src/scripts/poll.ts"]` | Sets the command to start the setup app container |
 | setupApp.enabled | bool | `true` | Sets if the setup app should be deployed |
 | setupApp.environmentVariables.harborPullSecret | string | `"si-docker-config"` | setupApp.environmentVariables.harborPullSecret this configures the pull secret from harbor |
@@ -194,6 +196,7 @@ The following parameters can be configured using a `values.yaml` file. For more 
 | setupApp.image.repository | string | `"setup-app"` | Sets the image repository |
 | setupApp.image.tag | string | `"20260924-ce8cb07f"` | Sets the image tag |
 | setupApp.name | string | `"setup-app"` | Sets the name of the deployment and containers for the setup app |
+| setupApp.resources | object | `{}` | Sets the setup app container resources. Empty leaves them to the cluster's defaults |
 | setupApp.persistence.accessModes | list | `["ReadWriteOnce"]` | Sets the access modes used for the persitence |
 | setupApp.persistence.enabled | bool | `false` | Sets if the persistence should be enabled during the deployment |
 | setupApp.persistence.pvcSize | string | `"1Gi"` | Sets the size set for the the persitence |
@@ -214,6 +217,7 @@ The following parameters can be configured using a `values.yaml` file. For more 
 | trustedOutputApp.persistence.enabled | bool | `false` | Sets if the persistence should be enabled during the deployment |
 | trustedOutputApp.persistence.pvcSize | string | `"1Gi"` | Sets the size set for the the persitence |
 | trustedOutputApp.persistence.storageClassName | string | `"aws-ebs"` | Sets the storageClassName used for the persitence |
+| trustedOutputApp.resources | object | `{"limits":{"cpu":"100m","memory":"128Mi"},"requests":{"cpu":"100m","memory":"128Mi"}}` | Sets the trusted output app container resources. It holds each results upload in memory |
 | trustedOutputApp.service.port | int | `5050` | Sets the service external port |
 | trustedOutputApp.service.protocol | string | `"TCP"` | Sets the service protocol |
 | trustedOutputApp.service.targetPort | int | `3002` | Sets the container internal port that the service redirects to. |
