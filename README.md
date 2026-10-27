@@ -237,7 +237,7 @@ The uninstallation will keep the secret that was generated during the deployment
 ### Development
 First we need to build the helm dependencies by running `helm dependency build ./secure-enclave` 
 
-Bootstrap regression tests render the chart and run its scripts against synthetic DNS responses and Kubernetes commands. They require Helm and Python; they do not contact a cluster.
+DNS regression tests render the chart and run the discovery script against synthetic responses. They require Helm and Python; they do not contact a cluster.
 
 ```bash
 python3 -m pip install -r requirements-dev.txt
