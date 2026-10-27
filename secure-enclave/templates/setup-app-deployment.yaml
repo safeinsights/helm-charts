@@ -101,6 +101,14 @@ spec:
           - name: "HARBOR_PULL_SECRET"
             value: {{ .Values.setupApp.environmentVariables.harborPullSecret }}
         {{- end }}
+        {{- with .Values.researchContainer.resources }}
+          - name: "RESEARCH_CONTAINER_RESOURCES"
+            value: {{ toJson . | quote }}
+        {{- end }}
+        {{- with .Values.researchContainer.timeoutSeconds }}
+          - name: "RESEARCH_CONTAINER_TIMEOUT_SECONDS"
+            value: {{ . | quote }}
+        {{- end }}
         {{- if .Values.gcp.enabled }}
           # GCP: tell setup-app which ServiceAccount to stamp on research Jobs (Workload
           # Identity) and which BigQuery dataset/table to inject (dataorg_bq_helper.R).
