@@ -94,13 +94,11 @@ spec:
       - name: dnsutils
         image: alpine
         imagePullPolicy: Always
+        workingDir: /tmp
         command: ["/bin/sh", "-c"]
         args:
-        - | 
-            echo "Get management server ip addresses"
-            # Get IP Addresses from the management app
-            nslookup {{ include "secure-enclave.extractHostFromUrl" .Values.managementApp.endpoint }} | grep 'Address'| grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}\b' >> /tmp/ip_addresses
-            cat /tmp/ip_addresses
+        - |
+            {{- include "secure-enclave.discoverManagementAddresses" . | nindent 12 }}
         volumeMounts:
         - name: temp-volume
           mountPath: /tmp/

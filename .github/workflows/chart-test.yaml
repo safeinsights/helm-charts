@@ -5,6 +5,8 @@ on:
     - "secure-enclave/**"
     - "kind-config*.yaml"
     - "ct-config.yaml"
+    - "tests/**"
+    - "requirements-dev.txt"
     - ".github/workflows/chart-test.yaml"
 
 jobs:
@@ -25,6 +27,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.13
+
+      - name: Run bootstrap regression tests
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m unittest discover -s tests -v
 
       - name: Set up chart-testing
         uses: helm/chart-testing-action@v2.7.0
