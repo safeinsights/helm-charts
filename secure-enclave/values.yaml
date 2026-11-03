@@ -180,6 +180,8 @@ setupApp:
     # -- Seconds between checks for errored research jobs, whose logs are then sent to the TOA
     # (POLL_ERRORED_JOBS_INTERVAL_SECONDS)
     pollErroredJobsIntervalSeconds: "60"
+  # -- Sets the setup app container resources. Empty leaves them to the cluster's defaults
+  resources: {}
 # -- Sets the trusted output app configuration
 trustedOutputApp:
   # -- Sets if the trusted output app should be deployed
@@ -223,6 +225,14 @@ trustedOutputApp:
   # -- Sets the command to start the trusted output app container. The runtime image only ships the
   # bundled dist/ (no package.json or npm scripts), so this must be the node entrypoint directly.
   command: ["node", "dist/server.js"]
+  # -- Sets the trusted output app container resources. It holds each results upload in memory
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
 # -- Sets the research container app configuration
 ##
 researchContainer:
