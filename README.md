@@ -194,7 +194,7 @@ The following parameters can be configured using a `values.yaml` file. For more 
 | setupApp.image.pullPolicy | string | `"Always"` | Sets the image pull policy |
 | setupApp.image.registry | string | `"harbor.safeinsights.org/safeinsights-public"` | Sets the image registry |
 | setupApp.image.repository | string | `"setup-app"` | Sets the image repository |
-| setupApp.image.tag | string | `"20260924-ce8cb07f"` | Sets the image tag |
+| setupApp.image.tag | string | `"20261103-bcbc4ffd"` | Sets the image tag |
 | setupApp.name | string | `"setup-app"` | Sets the name of the deployment and containers for the setup app |
 | setupApp.resources | object | `{}` | Sets the setup app container resources. Empty leaves them to the cluster's defaults |
 | setupApp.persistence.accessModes | list | `["ReadWriteOnce"]` | Sets the access modes used for the persitence |

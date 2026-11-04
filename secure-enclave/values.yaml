@@ -164,7 +164,7 @@ setupApp:
     # -- Sets the image repository
     repository: setup-app
     # -- Sets the image tag
-    tag: 20260924-ce8cb07f
+    tag: 20261103-bcbc4ffd
     # -- Sets the image pull policy
     pullPolicy: Always
   # -- Sets the working directory inside the setup app container
