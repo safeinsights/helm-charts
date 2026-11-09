@@ -184,6 +184,8 @@ The following parameters can be configured using a `values.yaml` file. For more 
 | managementApp.endpoint | string | `"https://app.safeinsights.org"` | Sets the endpoint where the management app is available. |
 | managementApp.memberId | string | `nil` | Sets the id of the member deploying the enclave |
 | networkPolicy.enabled | bool | `true` | networkPolicy.enabled this enables or  disables the network policy |
+| researchContainer.resources | object | `{}` | Sets the research container resources, passed to the Setup App as RESEARCH_CONTAINER_RESOURCES. Empty leaves them to the cluster's defaults |
+| researchContainer.timeoutSeconds | string | `""` | Sets the research pod's time limit in seconds, passed to the Setup App as RESEARCH_CONTAINER_TIMEOUT_SECONDS. Empty means no limit |
 | setupApp.command | list | `["npx","tsx","src/scripts/poll.ts"]` | Sets the command to start the setup app container |
 | setupApp.enabled | bool | `true` | Sets if the setup app should be deployed |
 | setupApp.environmentVariables.harborPullSecret | string | `"si-docker-config"` | setupApp.environmentVariables.harborPullSecret this configures the pull secret from harbor |
@@ -192,7 +194,7 @@ The following parameters can be configured using a `values.yaml` file. For more 
 | setupApp.image.pullPolicy | string | `"Always"` | Sets the image pull policy |
 | setupApp.image.registry | string | `"harbor.safeinsights.org/safeinsights-public"` | Sets the image registry |
 | setupApp.image.repository | string | `"setup-app"` | Sets the image repository |
-| setupApp.image.tag | string | `"20260924-ce8cb07f"` | Sets the image tag |
+| setupApp.image.tag | string | `"20261103-bcbc4ffd"` | Sets the image tag |
 | setupApp.name | string | `"setup-app"` | Sets the name of the deployment and containers for the setup app |
 | setupApp.resources | object | `{}` | Sets the setup app container resources. Empty leaves them to the cluster's defaults |
 | setupApp.persistence.accessModes | list | `["ReadWriteOnce"]` | Sets the access modes used for the persitence |

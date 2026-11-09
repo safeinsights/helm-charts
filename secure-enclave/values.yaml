@@ -164,7 +164,7 @@ setupApp:
     # -- Sets the image repository
     repository: setup-app
     # -- Sets the image tag
-    tag: 20260924-ce8cb07f
+    tag: 20261103-bcbc4ffd
     # -- Sets the image pull policy
     pullPolicy: Always
   # -- Sets the working directory inside the setup app container
@@ -238,6 +238,12 @@ trustedOutputApp:
 researchContainer:
   # -- Sets the name of the jobs and containers for the research
   name: research
+  # -- Sets the research container resources, passed to the Setup App as RESEARCH_CONTAINER_RESOURCES.
+  # Empty leaves them to the cluster's defaults
+  resources: {}
+  # -- Sets the research pod's time limit in seconds, passed to the Setup App as
+  # RESEARCH_CONTAINER_TIMEOUT_SECONDS. Empty means no limit
+  timeoutSeconds: ""
 
 # -- This is for setting Kubernetes Annotations to a Pod.
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
